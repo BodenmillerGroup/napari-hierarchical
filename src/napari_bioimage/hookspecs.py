@@ -5,7 +5,7 @@ import pluggy
 from napari.layers import Layer as NapariLayer
 from napari.viewer import Viewer
 
-from .data import Image, Layer
+from .model import Image, Layer
 
 PathLike = Union[str, os.PathLike]
 

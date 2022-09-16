@@ -6,15 +6,15 @@ import pluggy
 from napari.layers import Layer as NapariLayer
 from ome_zarr.io import ZarrLocation
 
-from napari_bioimage.data import Image, Layer
 from napari_bioimage.hookspecs import (
     ImageReaderFunction,
     ImageWriterFunction,
     LayerLoaderFunction,
     LayerSaverFunction,
 )
+from napari_bioimage.model import Image, Layer
 
-from .data import ZarrLayer
+from .model import ZarrLayer
 from .reader import load_zarr_layer, read_zarr_image
 from .writer import save_zarr_layer, write_zarr_image
 

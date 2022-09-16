@@ -10,9 +10,9 @@ from ome_zarr.io import ZarrLocation
 from ome_zarr.reader import Label, Multiscales
 from ome_zarr.reader import Reader as ZarrReader
 
-from napari_bioimage.data import Image, Layer
+from napari_bioimage.model import Image, Layer
 
-from .data import ZarrImage, ZarrImageLayer, ZarrLabelsLayer
+from .model import ZarrImage, ZarrImageLayer, ZarrLabelsLayer
 
 PathLike = Union[str, os.PathLike]
 

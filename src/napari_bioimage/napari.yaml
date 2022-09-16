@@ -2,47 +2,36 @@ name: napari-bioimage
 display_name: napari-bioimage
 contributions:
   commands:
-    - id: napari-bioimage.get_reader
-      python_name: napari_bioimage._reader:napari_get_reader
-      title: Open data with napari-bioimage
-    - id: napari-bioimage.write_multiple
-      python_name: napari_bioimage._writer:write_multiple
-      title: Save multi-layer data with napari-bioimage
-    - id: napari-bioimage.write_single_image
-      python_name: napari_bioimage._writer:write_single_image
-      title: Save image data with napari-bioimage
-    - id: napari-bioimage.make_sample_data
-      python_name: napari_bioimage._sample_data:make_sample_data
-      title: Load sample data from napari-bioimage
-    - id: napari-bioimage.make_qwidget
-      python_name: napari_bioimage._widget:ExampleQWidget
-      title: Make example QWidget
-    - id: napari-bioimage.make_magic_widget
-      python_name: napari_bioimage._widget:example_magic_widget
-      title: Make example magic widget
-    - id: napari-bioimage.make_func_widget
-      python_name: napari_bioimage._widget:example_function_widget
-      title: Make example function widget
-  readers:
-    - command: napari-bioimage.get_reader
-      accepts_directories: false
-      filename_patterns: ['*.npy']
-  writers:
-    - command: napari-bioimage.write_multiple
-      layer_types: ['image*','labels*']
-      filename_extensions: []
-    - command: napari-bioimage.write_single_image
-      layer_types: ['image']
-      filename_extensions: ['.npy']
+    # - id: napari-bioimage.get_reader
+    #   python_name: napari_bioimage._reader:napari_get_reader
+    #   title: Open data with napari-bioimage
+    # - id: napari-bioimage.write_multiple
+    #   python_name: napari_bioimage._writer:write_multiple
+    #   title: Save multi-layer data with napari-bioimage
+    # - id: napari-bioimage.write_single_image
+    #   python_name: napari_bioimage._writer:write_single_image
+    #   title: Save image data with napari-bioimage
+    - id: napari-bioimage.sample_data.idr0052.make_sample_data
+      python_name: napari_bioimage.sample_data.idr0052:make_sample_data
+      title: Load confocal 3D time-lapse imaging data (Walther et al., 2018)
+    - id: napari-bioimage.make_bioimage_widget
+      python_name: napari_bioimage.widgets:BioImageQWidget
+      title: Make bio-image widget
+  # readers:
+  #   - command: napari-bioimage.get_reader
+  #     accepts_directories: false
+  #     filename_patterns: ['*.npy']
+  # writers:
+  #   - command: napari-bioimage.write_multiple
+  #     layer_types: ['image*','labels*']
+  #     filename_extensions: []
+  #   - command: napari-bioimage.write_single_image
+  #     layer_types: ['image']
+  #     filename_extensions: ['.npy']
   sample_data:
-    - command: napari-bioimage.make_sample_data
-      display_name: napari-bioimage
-      key: unique_id.1
+    - command: napari-bioimage.sample_data.idr0052.make_sample_data
+      display_name: Confocal 3D time-lapse imaging data (Walther et al., 2018)
+      key: idr0052
   widgets:
-    - command: napari-bioimage.make_qwidget
-      display_name: Example QWidget
-    - command: napari-bioimage.make_magic_widget
-      display_name: Example Magic Widget
-    - command: napari-bioimage.make_func_widget
-      autogenerate: true
-      display_name: Example Function Widget
+    - command: napari-bioimage.make_bioimage_widget
+      display_name: Bio-image widget
