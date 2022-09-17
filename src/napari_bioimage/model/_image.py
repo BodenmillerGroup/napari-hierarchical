@@ -1,15 +1,13 @@
-from typing import TYPE_CHECKING, List, Optional, Sequence
+from typing import List, Optional, Sequence
 
 from ._layer import Layer
 
-if TYPE_CHECKING:
-    from ._group import Group
-
 
 class Image:
-    def __init__(self, name: str, group: Optional["Group"] = None) -> None:
+    def __init__(self, name: str, parent: Optional["Image"] = None) -> None:
         self._name = name
-        self._group = group
+        self._parent = parent
+        self._children: List[Image] = []
         self._layers: List[Layer] = []
 
     @property
@@ -21,12 +19,12 @@ class Image:
         self._name = value
 
     @property
-    def group(self) -> Optional["Group"]:
-        return self._group
+    def parent(self) -> Optional["Image"]:
+        return self._parent
 
-    @group.setter
-    def group(self, value: Optional["Group"]) -> None:
-        self._group = value
+    @parent.setter
+    def parent(self, value: Optional["Image"]) -> None:
+        self._parent = value
 
     @property
     def layers(self) -> Sequence[Layer]:
