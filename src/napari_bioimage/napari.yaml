@@ -11,9 +11,6 @@ contributions:
     # - id: napari-bioimage.write_single_image
     #   python_name: napari_bioimage._writer:write_single_image
     #   title: Save image data with napari-bioimage
-    - id: napari-bioimage.sample_data.idr0052.make_sample_data
-      python_name: napari_bioimage.sample_data.idr0052:make_sample_data
-      title: Load confocal 3D time-lapse imaging data (Walther et al., 2018)
     - id: napari-bioimage.make_bioimage_widget
       python_name: napari_bioimage.widgets:BioImageQWidget
       title: Make bio-image widget
@@ -29,9 +26,10 @@ contributions:
   #     layer_types: ['image']
   #     filename_extensions: ['.npy']
   sample_data:
-    - command: napari-bioimage.sample_data.idr0052.make_sample_data
-      display_name: Confocal 3D time-lapse imaging data (Walther et al., 2018)
-      key: idr0052
+    - key: idr0052A
+      display_name: confocal 3D time-lapse imaging of human condensins (Walther et al., 2018)
+      uri: https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.4/idr0052A/5514375.zarr
+      reader_plugin: napari-bioimage
   widgets:
     - command: napari-bioimage.make_bioimage_widget
-      display_name: Bio-image widget
+      display_name: bio-images
