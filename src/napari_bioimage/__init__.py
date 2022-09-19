@@ -3,17 +3,16 @@ try:
 except ImportError:
     __version__ = "unknown"
 
-from ._bioimage_controller import BioImageController
+from ._controller import BioImageController, BioImageControllerException, controller
+from ._exceptions import BioImageException
+from ._plugins import pm
 from ._reader import napari_get_reader
 
-# from ._writer import write_multiple, write_single_image
-
-controller = BioImageController()
-
 __all__ = [
-    "controller",
     "BioImageController",
+    "BioImageControllerException",
+    "controller",
+    "BioImageException",
+    "pm",
     "napari_get_reader",
-    # "write_single_image",
-    # "write_multiple",
 ]

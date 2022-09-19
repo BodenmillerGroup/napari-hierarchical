@@ -2,9 +2,8 @@ import os
 from pathlib import Path
 from typing import Optional, Union
 
-import pluggy
 from napari.layers import Layer as NapariLayer
-from ome_zarr.io import ZarrLocation
+from pluggy import HookimplMarker
 
 from napari_bioimage.hookspecs import (
     ImageReaderFunction,
@@ -14,22 +13,30 @@ from napari_bioimage.hookspecs import (
 )
 from napari_bioimage.model import Image, Layer
 
+from ._exceptions import BioImageOMEZarrException
+from ._reader import load_zarr_layer, read_zarr_image
+from ._writer import save_zarr_layer, write_zarr_image
 from .model import ZarrLayer
-from .reader import load_zarr_layer, read_zarr_image
-from .writer import save_zarr_layer, write_zarr_image
+
+available: bool = True
+try:
+    from ome_zarr.io import ZarrLocation
+    from ome_zarr.reader import Multiscales
+except ModuleNotFoundError:
+    available = False
+
 
 PathLike = Union[str, os.PathLike]
 
-hookimpl = pluggy.HookimplMarker("napari-bioimage.contrib.zarr")
+hookimpl = HookimplMarker("napari-bioimage")
 
 
 @hookimpl
 def napari_bioimage_get_image_reader(path: PathLike) -> Optional[ImageReaderFunction]:
-    if not isinstance(path, str) and not isinstance(path, Path):
-        path = str(path)
-    zarr_location = ZarrLocation(path)
-    if zarr_location.exists():
-        return read_zarr_image
+    if Path(path).suffix == ".zarr":
+        zarr_location = ZarrLocation(str(path))
+        if zarr_location.exists() and Multiscales.matches(zarr_location):
+            return read_zarr_image
     return None
 
 
@@ -56,3 +63,17 @@ def napari_bioimage_get_layer_saver(
     if isinstance(layer, ZarrLayer):
         return save_zarr_layer
     return None
+
+
+__all__ = [
+    "available",
+    "load_zarr_layer",
+    "read_zarr_image",
+    "save_zarr_layer",
+    "write_zarr_image",
+    "BioImageOMEZarrException",
+    "napari_bioimage_get_image_reader",
+    "napari_bioimage_get_layer_loader",
+    "napari_bioimage_get_image_writer",
+    "napari_bioimage_get_layer_saver",
+]

@@ -2,34 +2,28 @@ name: napari-bioimage
 display_name: napari-bioimage
 contributions:
   commands:
-    # - id: napari-bioimage.get_reader
-    #   python_name: napari_bioimage._reader:napari_get_reader
-    #   title: Open data with napari-bioimage
-    # - id: napari-bioimage.write_multiple
-    #   python_name: napari_bioimage._writer:write_multiple
-    #   title: Save multi-layer data with napari-bioimage
-    # - id: napari-bioimage.write_single_image
-    #   python_name: napari_bioimage._writer:write_single_image
-    #   title: Save image data with napari-bioimage
-    - id: napari-bioimage.make_bioimage_widget
+    - id: napari-bioimage.get_reader
+      python_name: napari_bioimage:napari_get_reader
+      title: Open data with napari-bioimage
+    - id: napari-bioimage.make_widget
       python_name: napari_bioimage.widgets:BioImageQWidget
-      title: Make bio-image widget
-  # readers:
-  #   - command: napari-bioimage.get_reader
-  #     accepts_directories: false
-  #     filename_patterns: ['*.npy']
-  # writers:
-  #   - command: napari-bioimage.write_multiple
-  #     layer_types: ['image*','labels*']
-  #     filename_extensions: []
-  #   - command: napari-bioimage.write_single_image
-  #     layer_types: ['image']
-  #     filename_extensions: ['.npy']
+      title: Make napari-bioimage widget
+    - id: napari-bioimage.sample_data.idr0052A
+      python_name: napari_bioimage.sample_data.idr0052A:make_sample_data
+      title: Make idr0052A sample data
+  readers:
+    - command: napari-bioimage.get_reader
+      accepts_directories: false
+      filename_patterns: ['*']
+  widgets:
+    - command: napari-bioimage.make_widget
+      display_name: bio-images
   sample_data:
+    # FIXME https://github.com/napari/napari/issues/5102
+    # - key: idr0052A
+    #   display_name: confocal 3D time-lapse imaging of human condensins (Walther et al., 2018)
+    #   uri: https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.4/idr0052A/5514375.zarr
+    #   reader_plugin: napari-bioimage
     - key: idr0052A
       display_name: confocal 3D time-lapse imaging of human condensins (Walther et al., 2018)
-      uri: https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.4/idr0052A/5514375.zarr
-      reader_plugin: napari-bioimage
-  widgets:
-    - command: napari-bioimage.make_bioimage_widget
-      display_name: bio-images
+      command: napari-bioimage.sample_data.idr0052A

@@ -1,0 +1,2 @@
+class BioImageException(Exception):
+    pass

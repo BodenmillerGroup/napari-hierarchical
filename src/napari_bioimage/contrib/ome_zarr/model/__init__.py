@@ -1,6 +1,4 @@
-from ._zarr_image import ZarrImage
-from ._zarr_image_layer import ZarrImageLayer
-from ._zarr_labels_layer import ZarrLabelsLayer
-from ._zarr_layer import ZarrLayer
+from ._image import ZarrImage
+from ._layer import ZarrImageLayer, ZarrLabelsLayer, ZarrLayer
 
 __all__ = ["ZarrImage", "ZarrImageLayer", "ZarrLabelsLayer", "ZarrLayer"]

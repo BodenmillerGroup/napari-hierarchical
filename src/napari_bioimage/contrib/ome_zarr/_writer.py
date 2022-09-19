@@ -10,8 +10,8 @@ PathLike = Union[str, os.PathLike]
 
 
 def write_zarr_image(path: PathLike, image: Image) -> None:
-    pass
+    pass  # TODO
 
 
-def save_zarr_layer(viewer: Viewer, layer: Layer, napari_layer: NapariLayer) -> None:
-    pass
+def save_zarr_layer(layer: Layer, viewer: Viewer, napari_layer: NapariLayer) -> None:
+    pass  # TODO
