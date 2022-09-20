@@ -5,14 +5,18 @@ except ImportError:
 
 from ._controller import BioImageController, BioImageControllerException, controller
 from ._exceptions import BioImageException
-from ._plugins import pm
 from ._reader import napari_get_reader
+from .contrib import imc, ome_zarr
+
+if imc.available:
+    controller.pm.register(imc, name="napari-bioimage-imc")
+if ome_zarr.available:
+    controller.pm.register(ome_zarr, name="napari-bioimage-ome-zarr")
 
 __all__ = [
     "BioImageController",
     "BioImageControllerException",
     "controller",
     "BioImageException",
-    "pm",
     "napari_get_reader",
 ]

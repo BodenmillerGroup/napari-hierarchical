@@ -2,10 +2,10 @@ import os
 from typing import Optional, Union
 
 from napari.utils.events import EventedList
+from pluggy import PluginManager
 
+from . import hookspecs
 from ._exceptions import BioImageException
-from ._plugins import pm
-from .hookspecs import ImageReaderFunction, ImageWriterFunction
 from .model import Image
 
 PathLike = Union[str, os.PathLike]
@@ -20,17 +20,22 @@ class BioImageController:
         self._images: EventedList[Image] = EventedList(
             basetype=Image, lookup={str: lambda image: image.name}
         )
+        self._pm = PluginManager("napari-bioimage")
+        self._pm.add_hookspecs(hookspecs)
+        self._pm.load_setuptools_entrypoints("napari-bioimage")
 
     def _get_image_reader_function(
         self, path: PathLike
-    ) -> Optional[ImageReaderFunction]:
-        image_reader_function = pm.hook.napari_bioimage_get_image_reader(path=path)
+    ) -> Optional[hookspecs.ImageReaderFunction]:
+        image_reader_function = self._pm.hook.napari_bioimage_get_image_reader(
+            path=path
+        )
         return image_reader_function
 
     def _get_image_writer_function(
         self, path: PathLike, image: Image
-    ) -> Optional[ImageWriterFunction]:
-        image_writer_function = pm.hook.napari_bioimage_get_image_writer(
+    ) -> Optional[hookspecs.ImageWriterFunction]:
+        image_writer_function = self._pm.hook.napari_bioimage_get_image_writer(
             path=path, image=image
         )
         return image_writer_function
@@ -58,6 +63,10 @@ class BioImageController:
     @property
     def images(self) -> EventedList[Image]:
         return self._images
+
+    @property
+    def pm(self) -> PluginManager:
+        return self._pm
 
 
 controller = BioImageController()
