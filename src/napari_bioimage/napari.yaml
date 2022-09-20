@@ -11,6 +11,9 @@ contributions:
     - id: napari-bioimage.sample_data.idr0052A
       python_name: napari_bioimage.sample_data.idr0052A:make_sample_data
       title: Make idr0052A sample data
+    - id: napari-bioimage.sample_data.imc_mock
+      python_name: napari_bioimage.sample_data.imc_mock:make_sample_data
+      title: Make IMC mock sample data
   readers:
     - command: napari-bioimage.get_reader
       accepts_directories: false
@@ -27,3 +30,6 @@ contributions:
     - key: idr0052A
       display_name: confocal 3D time-lapse imaging of human condensins (Walther et al., 2018)
       command: napari-bioimage.sample_data.idr0052A
+    - key: imc_mock
+      display_name: IMC mock dataset (Bodenmiller group, University of Zurich)
+      command: napari-bioimage.sample_data.imc_mock
