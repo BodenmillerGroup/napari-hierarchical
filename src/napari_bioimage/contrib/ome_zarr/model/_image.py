@@ -1,5 +1,5 @@
 from napari_bioimage.model import Image
 
 
-class ZarrImage(Image):
+class OMEZarrImage(Image):
     pass

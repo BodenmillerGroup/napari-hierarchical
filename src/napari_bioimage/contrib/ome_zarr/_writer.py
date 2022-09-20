@@ -9,9 +9,11 @@ from napari_bioimage.model import Image, Layer
 PathLike = Union[str, os.PathLike]
 
 
-def write_zarr_image(path: PathLike, image: Image) -> None:
+def write_ome_zarr_image(path: PathLike, image: Image) -> None:
     pass  # TODO
 
 
-def save_zarr_layer(layer: Layer, viewer: Viewer, napari_layer: NapariLayer) -> None:
+def save_ome_zarr_layer(
+    layer: Layer, viewer: Viewer, napari_layer: NapariLayer
+) -> None:
     pass  # TODO

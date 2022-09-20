@@ -5,19 +5,23 @@ import numpy as np
 from dask.array import Array
 from napari.layers import Layer as NapariLayer
 from napari.viewer import Viewer
-from ome_zarr.io import ZarrLocation
-from ome_zarr.reader import Multiscales
-from ome_zarr.reader import Reader as ZarrReader
 
 from napari_bioimage.model import Image, Layer
 
 from ._exceptions import BioImageOMEZarrException
-from .model import ZarrImage, ZarrImageLayer, ZarrLabelsLayer
+from .model import OMEZarrImage, OMEZarrImageLayer, OMEZarrLabelsLayer
+
+try:
+    from ome_zarr.io import ZarrLocation
+    from ome_zarr.reader import Multiscales
+    from ome_zarr.reader import Reader as ZarrReader
+except ModuleNotFoundError:
+    pass  # skipped intentionally
 
 PathLike = Union[str, os.PathLike]
 
 
-def read_zarr_image(path: PathLike) -> Image:
+def read_ome_zarr_image(path: PathLike) -> Image:
     zarr_location = ZarrLocation(str(path))
     try:
         zarr_reader = ZarrReader(zarr_location)
@@ -38,33 +42,33 @@ def read_zarr_image(path: PathLike) -> Image:
         for axis, axis_dict in enumerate(multiscales.node.metadata["axes"])
         if axis_dict.get("type") == "channel"
     ]
-    zarr_image = ZarrImage(name=str(path))
-    for zarr_image_layer in _read_zarr_image_layers(
-        zarr_image, multiscales, data, channel_axes
+    ome_zarr_image = OMEZarrImage(name=str(path))
+    for zarr_image_layer in _read_ome_zarr_image_layers(
+        ome_zarr_image, multiscales, data, channel_axes
     ):
-        zarr_image.layers.append(zarr_image_layer)
-    return zarr_image
+        ome_zarr_image.layers.append(zarr_image_layer)
+    return ome_zarr_image
 
 
-def _read_zarr_image_layers(
-    zarr_image: ZarrImage,
-    multiscales: Multiscales,
+def _read_ome_zarr_image_layers(
+    ome_zarr_image: OMEZarrImage,
+    multiscales: "Multiscales",
     data: List[Array],
     channel_axes: Sequence[int],
     _current_channel_axes: Sequence[int] = (),
     _current_channel_indices: Sequence[int] = (),
-) -> Generator[ZarrImageLayer, None, None]:
+) -> Generator[OMEZarrImageLayer, None, None]:
     if len(channel_axes) > 0:
         channel_axis = channel_axes[0]
         channel_axis_name = multiscales.node.metadata["axes"][channel_axis].get("name")
         if channel_axis_name is None:
             raise BioImageOMEZarrException(
-                f"{zarr_image} does not contain name of channel axis {channel_axis}"
+                f"{ome_zarr_image} does not contain name of channel axis {channel_axis}"
             )
         channel_names = multiscales.node.metadata.get("name")
         for channel_index in range(data[0].shape[channel_axis]):
-            for layer in _read_zarr_image_layers(
-                zarr_image,
+            for layer in _read_ome_zarr_image_layers(
+                ome_zarr_image,
                 multiscales,
                 data,
                 channel_axes[1:],
@@ -92,13 +96,13 @@ def _read_zarr_image_layers(
             return a
 
         layer_data = [take_channels(a) for a in data]
-        yield ZarrImageLayer(name="", image=zarr_image, data=layer_data)
+        yield OMEZarrImageLayer(name="", image=ome_zarr_image, data=layer_data)
 
 
-def load_zarr_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
-    if isinstance(layer, ZarrLabelsLayer):
+def load_ome_zarr_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
+    if isinstance(layer, OMEZarrLabelsLayer):
         pass  # TODO zarr labels layers
-    elif isinstance(layer, ZarrImageLayer):
+    elif isinstance(layer, OMEZarrImageLayer):
         if len(layer.data) == 1:
             return viewer.add_image(data=layer.data[0], name=layer.name)
         return viewer.add_image(data=layer.data, name=layer.name, multiscale=True)

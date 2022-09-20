@@ -5,7 +5,7 @@ from dask.array import Array
 from napari_bioimage.model import Layer
 
 
-class ZarrLayer(Layer):
+class OMEZarrLayer(Layer):
     _data: List[Array]
 
     def __init__(self, *, data: List[Array], **kwargs):
@@ -17,9 +17,9 @@ class ZarrLayer(Layer):
         return self._data
 
 
-class ZarrImageLayer(ZarrLayer):
+class OMEZarrImageLayer(OMEZarrLayer):
     pass
 
 
-class ZarrLabelsLayer(ZarrLayer):
+class OMEZarrLabelsLayer(OMEZarrLayer):
     pass
