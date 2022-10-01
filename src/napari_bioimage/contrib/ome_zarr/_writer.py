@@ -10,10 +10,10 @@ PathLike = Union[str, os.PathLike]
 
 
 def write_ome_zarr_image(path: PathLike, image: Image) -> None:
-    pass  # TODO
+    raise NotImplementedError()  # TODO
 
 
 def save_ome_zarr_layer(
     layer: Layer, viewer: Viewer, napari_layer: NapariLayer
 ) -> None:
-    pass  # TODO
+    raise NotImplementedError()  # TODO

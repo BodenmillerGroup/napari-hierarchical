@@ -52,8 +52,9 @@ def napari_bioimage_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFuncti
 def napari_bioimage_get_image_writer(
     path: PathLike, image: Image
 ) -> Optional[ImageWriterFunction]:
-    if Path(path).suffix == ".zarr":
-        return write_ome_zarr_image
+    # TODO
+    # if Path(path).suffix == ".zarr":
+    #     return write_ome_zarr_image
     return None
 
 
@@ -61,8 +62,9 @@ def napari_bioimage_get_image_writer(
 def napari_bioimage_get_layer_saver(
     layer: Layer, napari_layer: NapariLayer
 ) -> Optional[LayerSaverFunction]:
-    if isinstance(layer, OMEZarrLayer):
-        return save_ome_zarr_layer
+    # TODO
+    # if isinstance(layer, OMEZarrLayer):
+    #     return save_ome_zarr_layer
     return None
 
 

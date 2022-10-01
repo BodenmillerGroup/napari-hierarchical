@@ -6,7 +6,7 @@ contributions:
       python_name: napari_bioimage:napari_get_reader
       title: Open data with napari-bioimage
     - id: napari-bioimage.make_widget
-      python_name: napari_bioimage.widgets:BioImageQWidget
+      python_name: napari_bioimage.widgets:QBioImageWidget
       title: Make napari-bioimage widget
     - id: napari-bioimage.sample_data.idr0052A
       python_name: napari_bioimage.sample_data.idr0052A:make_sample_data

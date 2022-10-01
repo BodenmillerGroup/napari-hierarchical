@@ -1,19 +1,23 @@
-from typing import List
+from typing import Sequence
 
 from dask.array import Array
 
-from napari_bioimage.model import Layer
+from napari_bioimage.model import Image, Layer
+
+
+class OMEZarrImage(Image):
+    path: str
 
 
 class OMEZarrLayer(Layer):
-    _data: List[Array]
+    _data: Sequence[Array]
 
-    def __init__(self, *, data: List[Array], **kwargs):
+    def __init__(self, *, data: Sequence[Array], **kwargs):
         super().__init__(**kwargs)
         self._data = data
 
     @property
-    def data(self) -> List[Array]:
+    def data(self) -> Sequence[Array]:
         return self._data
 
 
