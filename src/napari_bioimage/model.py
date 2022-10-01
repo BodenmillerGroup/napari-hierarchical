@@ -1,11 +1,7 @@
 from typing import Any, Optional
 
 from napari.utils.events import EventedModel
-from napari.utils.events.containers import (
-    EventedDict,
-    EventedList,
-    SelectableNestableEventedList,
-)
+from napari.utils.events.containers import EventedDict, EventedList
 
 # By inheriting from EventedModel, dynamic models deliberately become impossible
 
@@ -26,7 +22,13 @@ class Image(EventedModel):
     )
 
 
+Layer.update_forward_refs(Image=Image)
+
+
 class ImageGroup(Image):
-    children: SelectableNestableEventedList[Image] = SelectableNestableEventedList(
+    children: EventedList[Image] = EventedList(
         basetype=Image, lookup={str: lambda image: image.name}
     )
+
+
+Image.update_forward_refs(ImageGroup=ImageGroup)
