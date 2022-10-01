@@ -113,6 +113,7 @@ def load_imc_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
                 if acquisition.id == acquisition_image.acquisition_id
             )
             data = f.read_acquisition(acquisition)[layer.channel_index]
+        # TODO read acquisition from TXT if reading from MCD failes
         return viewer.add_image(
             data=data, name=layer.name, metadata={"napari_bioimage_layer": layer}
         )  # TODO scale, rotation, translation
