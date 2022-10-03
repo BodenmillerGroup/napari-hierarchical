@@ -249,8 +249,10 @@ class QImageTreeModel(QAbstractItemModel):
         self.dataChanged.emit(top_left, bottom_right)
 
     def _on_images_reordered(self, event: Event) -> None:
-        top_left = self.createIndex(0, 0)
-        bottom_right = self.createIndex(len(self._nodes) - 1, len(self.COLUMNS) - 1)
+        top_left = self.createIndex(0, 0, object=self._nodes[0])
+        bottom_right = self.createIndex(
+            len(self._nodes) - 1, len(self.COLUMNS) - 1, object=self._nodes[-1]
+        )
         self.dataChanged.emit(top_left, bottom_right)
 
     def _on_image_changed(self, event: Event) -> None:
