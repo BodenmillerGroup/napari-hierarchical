@@ -20,7 +20,7 @@ contributions:
       filename_patterns: ['*']
   widgets:
     - command: napari-bioimage.make_widget
-      display_name: bio-images
+      display_name: images
   sample_data:
     # FIXME https://github.com/napari/napari/issues/5102
     # - key: idr0052A

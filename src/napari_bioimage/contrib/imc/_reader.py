@@ -33,7 +33,7 @@ def read_imc_image(path: PathLike) -> Image:
                 )
                 for panorama in slide.panoramas:
                     panorama_image = IMCPanoramaImage(
-                        name=f"[P{panorama.id:02d} {panorama.description}",
+                        name=f"[P{panorama.id:02d}] {panorama.description}",
                         parent=slide_image.panoramas_group,
                         panorama_id=panorama.id,
                     )
