@@ -4,6 +4,8 @@ from tempfile import TemporaryDirectory
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
+from napari.viewer import current_viewer
+
 from .._controller import controller
 
 image_url = (
@@ -22,4 +24,11 @@ def make_sample_data():
             with urlopen(image_url) as fsrc:
                 copyfileobj(fsrc, fdst)
     controller.read_image(mcd_file)
+    viewer = controller.viewer or current_viewer()
+    assert viewer is not None
+    if controller.viewer != viewer:
+        controller.register_viewer(viewer)
+    if controller.widget is None:
+        _, widget = viewer.window.add_plugin_dock_widget("napari-bioimage")
+        assert controller.widget == widget
     return []

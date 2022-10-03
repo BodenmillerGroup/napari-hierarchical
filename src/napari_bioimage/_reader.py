@@ -1,3 +1,5 @@
+from napari.viewer import current_viewer
+
 from ._controller import controller
 
 
@@ -13,4 +15,11 @@ def napari_get_reader(path):
 
 def _reader_function(path):
     controller.read_image(path)
+    viewer = controller.viewer or current_viewer()
+    assert viewer is not None
+    if controller.viewer != viewer:
+        controller.register_viewer(viewer)
+    if controller.widget is None:
+        _, widget = viewer.window.add_plugin_dock_widget("napari-bioimage")
+        assert controller.widget == widget
     return [(None,)]

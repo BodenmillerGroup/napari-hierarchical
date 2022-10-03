@@ -17,9 +17,10 @@ class QBioImageWidget(QWidget):
         parent: Optional[QWidget] = None,
         flags: Union[Qt.WindowFlags, Qt.WindowType] = Qt.WindowFlags(),
     ) -> None:
-        controller._widget = self
         super().__init__(parent, flags)
-        self._viewer = napari_viewer
+        if controller.viewer != napari_viewer:
+            controller.register_viewer(napari_viewer)
+        controller.register_widget(self)
         self._image_tree_widget = QImageTreeWidget(controller)
         self._layer_groups_widget = QLayerGroupsWidget(controller)
         self._layer_properties_widget = QLayerPropertiesWidget(controller)

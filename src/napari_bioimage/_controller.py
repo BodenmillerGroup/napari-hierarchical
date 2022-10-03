@@ -2,11 +2,12 @@ import os
 from typing import TYPE_CHECKING, Optional, Union
 
 from napari.utils.events import EventedList
+from napari.viewer import Viewer
 from pluggy import PluginManager
 
 from . import hookspecs
 from ._exceptions import BioImageException
-from .model import Image
+from .model import Image, Layer
 
 if TYPE_CHECKING:
     from .widgets import QBioImageWidget
@@ -14,19 +15,22 @@ if TYPE_CHECKING:
 PathLike = Union[str, os.PathLike]
 
 
-class BioImageControllerException(BioImageException):
-    pass
-
-
 class BioImageController:
     def __init__(self) -> None:
-        self._images: EventedList[Image] = EventedList(
-            basetype=Image, lookup={str: lambda image: image.name}
-        )
-        self._widget: Optional["QBioImageWidget"] = None
         self._pm = PluginManager("napari-bioimage")
         self._pm.add_hookspecs(hookspecs)
         self._pm.load_setuptools_entrypoints("napari-bioimage")
+        self._viewer: Optional[Viewer] = None
+        self._widget: Optional["QBioImageWidget"] = None
+        self._images: EventedList[Image] = EventedList(
+            basetype=Image, lookup={str: lambda image: image.name}
+        )
+        self._layers: EventedList[Layer] = EventedList(
+            basetype=Layer, lookup={str: lambda layer: layer.name}
+        )
+        self._selected_layers: EventedList[Layer] = EventedList(
+            basetype=Layer, lookup={str: lambda layer: layer.name}
+        )
 
     def _get_image_reader_function(
         self, path: PathLike
@@ -64,17 +68,41 @@ class BioImageController:
             raise BioImageControllerException(f"No writer found for {path}")
         image_writer_function(path, image)
 
+    def register_viewer(self, viewer: Viewer) -> None:
+        assert self._viewer is None
+        self._viewer = viewer
+
+    def register_widget(self, widget: "QBioImageWidget") -> None:
+        assert self._widget is None
+        self._widget = widget
+
     @property
-    def images(self) -> EventedList[Image]:
-        return self._images
+    def pm(self) -> PluginManager:
+        return self._pm
+
+    @property
+    def viewer(self) -> Optional[Viewer]:
+        return self._viewer
 
     @property
     def widget(self) -> Optional["QBioImageWidget"]:
         return self._widget
 
     @property
-    def pm(self) -> PluginManager:
-        return self._pm
+    def images(self) -> EventedList[Image]:
+        return self._images
+
+    @property
+    def layers(self) -> EventedList[Layer]:
+        return self._layers
+
+    @property
+    def selected_layers(self) -> EventedList[Layer]:
+        return self._selected_layers
+
+
+class BioImageControllerException(BioImageException):
+    pass
 
 
 controller = BioImageController()

@@ -19,7 +19,6 @@ class QImageTreeWidget(QWidget):
         self._image_tree_view = QTreeView()
         self._image_tree_model = QImageTreeModel(controller)
         self._image_tree_view.setModel(self._image_tree_model)
-        self._image_tree_view.header().hide()
         self.setupUI()
 
     def setupUI(self) -> None:

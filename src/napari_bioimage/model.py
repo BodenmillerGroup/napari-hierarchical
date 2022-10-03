@@ -3,9 +3,22 @@ from typing import Any, Optional
 from napari.utils.events import EventedModel
 from napari.utils.events.containers import EventedDict, EventedList
 
-# By inheriting from EventedModel, dynamic models deliberately become impossible
-
-# For compatibility with napari.utils.events, do not inherit from napari.utils.tree
+#
+# The following options were considered:
+#
+# 1. Custom classes
+# - dynamic models are possible (e.g. file system)
+#
+# 2. Inherit from napari.utils.events classes
+# - dynamic models are impossible (may be a good thing)
+# - consistent with existing napari models (evented pydantic models)
+#
+# 3. Inherit from napari.utils.tree classes
+# - dynamic models are impossible (may be a good thing)
+# - re-use existing composite tree pattern implementation
+#
+# For consistency, option 2 (inherit from napari.utils.events classes) was chosen.
+#
 
 
 class Layer(EventedModel):
