@@ -8,7 +8,7 @@ from qtpy.QtCore import QAbstractItemModel, QModelIndex, QObject, Qt
 from .._controller import BioImageController
 from ..model import Image, ImageGroup
 
-# This tree model implements a "parallel" composite tree pattern
+# This tree model implements a composite tree pattern "in parallel"
 # This is required to store callback references with each node for deregistration
 # (pydantic models are not hashable --> callback references cannot be stored in a dict)
 
@@ -77,10 +77,10 @@ class QImageTreeModel(QAbstractItemModel):
     class Column(NamedTuple):
         field: str
         title: str
-        readonly: bool
+        editable: bool
 
     COLUMNS = [
-        Column("name", "Image", False),
+        Column("name", "Image", True),
     ]
 
     def __init__(
@@ -100,7 +100,7 @@ class QImageTreeModel(QAbstractItemModel):
     def index(
         self, row: int, column: int, parent: QModelIndex = QModelIndex()
     ) -> QModelIndex:
-        if self.hasIndex(row, column, parent=parent):
+        if 0 <= column < len(self.COLUMNS):
             if parent.isValid():
                 parent_group_node = parent.internalPointer()
                 assert isinstance(parent_group_node, QImageTreeModel.GroupNode)
@@ -135,8 +135,13 @@ class QImageTreeModel(QAbstractItemModel):
     def columnCount(self, index: QModelIndex = QModelIndex()) -> int:
         return len(self.COLUMNS)
 
-    # def flags(self, index: QModelIndex) -> Qt.ItemFlags:
-    #     return super().flags(index)
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+        flags = super().flags(index)
+        if index.isValid() and 0 <= index.column() < len(self.COLUMNS):
+            column = self.COLUMNS[index.column()]
+            if column.editable:
+                flags |= Qt.ItemFlag.ItemIsEditable
+        return flags
 
     def headerData(
         self,
@@ -145,21 +150,36 @@ class QImageTreeModel(QAbstractItemModel):
         role: int = Qt.ItemDataRole.DisplayRole,
     ) -> Any:
         if role == Qt.ItemDataRole.DisplayRole and 0 <= section < len(self.COLUMNS):
-            return self.COLUMNS[section].title
+            column = self.COLUMNS[section]
+            return column.title
         return None
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
-        if index.isValid():
+        if (
+            index.isValid()
+            and 0 <= index.column() < len(self.COLUMNS)
+            and role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole)
+        ):
             node = index.internalPointer()
             assert isinstance(node, QImageTreeModel.Node)
-            if role == Qt.ItemDataRole.DisplayRole:
-                return getattr(node.image, self.COLUMNS[index.column()].field)
+            column = self.COLUMNS[index.column()]
+            return getattr(node.image, column.field)
         return None
 
-    # def setData(
-    #     self, index: QModelIndex, value: Any, role: int = Qt.ItemDataRole.EditRole
-    # ) -> bool:
-    #     return super().setData(index, value, role)
+    def setData(
+        self, index: QModelIndex, value: Any, role: int = Qt.ItemDataRole.EditRole
+    ) -> bool:
+        if (
+            index.isValid()
+            and 0 <= index.column() < len(self.COLUMNS)
+            and role == Qt.ItemDataRole.EditRole
+        ):
+            node = index.internalPointer()
+            assert isinstance(node, QImageTreeModel.Node)
+            column = self.COLUMNS[index.column()]
+            setattr(node.image, column.field, value)
+            return True
+        return False
 
     # def insertRows(
     #     self, row: int, count: int, parent: QModelIndex = QModelIndex()

@@ -33,7 +33,7 @@ def read_ome_zarr_image(path: PathLike) -> Image:
     basename = multiscales.zarr.basename()
     if "axes" not in multiscales.node.metadata:
         raise BioImageOMEZarrException(f"{basename} does not contain axes metadata")
-    image = OMEZarrImage(name=basename, path=str(path))
+    image = OMEZarrImage(name=basename, zarr_file=str(path))
     for image_layer in _get_image_layers(image, multiscales):
         image.layers.append(image_layer)
     if label_multiscales is not None:

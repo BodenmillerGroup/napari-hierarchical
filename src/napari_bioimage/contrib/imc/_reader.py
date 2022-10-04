@@ -6,7 +6,7 @@ from napari.layers import Layer as NapariLayer
 from napari.viewer import Viewer
 from readimc import MCDFile
 
-from napari_bioimage.model import Image, Layer
+from napari_bioimage.model import Image, ImageGroup, Layer
 
 from ._exceptions import BioImageIMCException
 from .model import (
@@ -23,30 +23,41 @@ PathLike = Union[str, os.PathLike]
 
 def read_imc_image(path: PathLike) -> Image:
     try:
-        image = IMCImage(name=Path(path).name, path=str(path))
+        image = IMCImage(name=Path(path).name, mcd_file=str(path))
         with MCDFile(path) as f:
             for slide in f.slides:
-                slide_image = IMCSlideImage.create(
+                slide_image = IMCSlideImage(
                     name=f"[S{slide.id:02d}] {slide.description}",
                     parent=image,
+                    mcd_file=str(path),
                     slide_id=slide.id,
                 )
+                panoramas_group = ImageGroup(name="Panoramas", parent=slide_image)
                 for panorama in slide.panoramas:
                     panorama_image = IMCPanoramaImage(
                         name=f"[P{panorama.id:02d}] {panorama.description}",
-                        parent=slide_image.panoramas_group,
+                        parent=panoramas_group,
+                        mcd_file=str(path),
+                        slide_id=slide.id,
                         panorama_id=panorama.id,
                     )
                     panorama_layer = IMCPanoramaLayer(
                         name=f"{image.name} [S{slide.id:02d} P{panorama.id:02d}]",
                         image=panorama_image,
+                        mcd_file=str(path),
+                        slide_id=slide.id,
+                        panorama_id=panorama.id,
                     )
                     panorama_image.layers.append(panorama_layer)
-                    slide_image.panoramas_group.children.append(panorama_image)
+                    panoramas_group.children.append(panorama_image)
+                slide_image.children.append(panoramas_group)
+                acquisitions_group = ImageGroup(name="Acquisitions", parent=slide_image)
                 for acquisition in slide.acquisitions:
                     acquisition_image = IMCAcquisitionImage(
                         name=f"[A{acquisition.id:02d}] {acquisition.description}",
-                        parent=slide_image.acquisitions_group,
+                        parent=acquisitions_group,
+                        mcd_file=str(path),
+                        slide_id=slide.id,
                         acquisition_id=acquisition.id,
                     )
                     for channel_index, (channel_name, channel_label) in enumerate(
@@ -60,13 +71,17 @@ def read_imc_image(path: PathLike) -> Image:
                                 f"C{channel_index:02d}]"
                             ),
                             image=acquisition_image,
+                            mcd_file=str(path),
+                            slide_id=slide.id,
+                            acquisition_id=acquisition.id,
                             channel_index=channel_index,
                         )
                         acquisition_layer.metadata[
                             "Channel"
                         ] = f"[C{channel_index:02d}] {channel_name} {channel_label}"
                         acquisition_image.layers.append(acquisition_layer)
-                    slide_image.acquisitions_group.children.append(acquisition_image)
+                    acquisitions_group.children.append(acquisition_image)
+                slide_image.children.append(acquisitions_group)
                 image.children.append(slide_image)
         return image
     except Exception as e:
@@ -75,42 +90,24 @@ def read_imc_image(path: PathLike) -> Image:
 
 def load_imc_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
     if isinstance(layer, IMCPanoramaLayer):
-        assert isinstance(layer.image, IMCPanoramaImage)
-        panorama_image = layer.image
-        assert panorama_image.parent is not None
-        assert isinstance(panorama_image.parent.parent, IMCSlideImage)
-        slide_image = panorama_image.parent.parent
-        assert isinstance(slide_image.parent, IMCImage)
-        image = slide_image.parent
-        with MCDFile(image.path) as f:
-            slide = next(
-                slide for slide in f.slides if slide.id == slide_image.slide_id
-            )
+        with MCDFile(layer.mcd_file) as f:
+            slide = next(slide for slide in f.slides if slide.id == layer.slide_id)
             panorama = next(
                 panorama
                 for panorama in slide.panoramas
-                if panorama.id == panorama_image.panorama_id
+                if panorama.id == layer.panorama_id
             )
             data = f.read_panorama(panorama)
         return viewer.add_image(
             data=data, name=layer.name, metadata={"napari_bioimage_layer": layer}
         )  # TODO scale, translation, rotation
     if isinstance(layer, IMCAcquisitionLayer):
-        assert isinstance(layer.image, IMCAcquisitionImage)
-        acquisition_image = layer.image
-        assert acquisition_image.parent is not None
-        assert isinstance(acquisition_image.parent.parent, IMCSlideImage)
-        slide_image = acquisition_image.parent.parent
-        assert isinstance(slide_image.parent, IMCImage)
-        image = slide_image.parent
-        with MCDFile(image.path) as f:
-            slide = next(
-                slide for slide in f.slides if slide.id == slide_image.slide_id
-            )
+        with MCDFile(layer.mcd_file) as f:
+            slide = next(slide for slide in f.slides if slide.id == layer.slide_id)
             acquisition = next(
                 acquisition
                 for acquisition in slide.acquisitions
-                if acquisition.id == acquisition_image.acquisition_id
+                if acquisition.id == layer.acquisition_id
             )
             data = f.read_acquisition(acquisition)[layer.channel_index]
         # TODO read acquisition from TXT if reading from MCD failes

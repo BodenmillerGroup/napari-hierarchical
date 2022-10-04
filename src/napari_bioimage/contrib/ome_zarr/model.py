@@ -6,7 +6,7 @@ from napari_bioimage.model import Image, Layer
 
 
 class OMEZarrImage(Image):
-    path: str
+    zarr_file: str
 
 
 class OMEZarrLayer(Layer):
