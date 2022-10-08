@@ -8,7 +8,7 @@ from napari.viewer import Viewer
 from napari_bioimage.model import Image, Layer
 
 from ._exceptions import BioImageOMEZarrException
-from .model import OMEZarrImage, OMEZarrImageLayer, OMEZarrLabelsLayer
+from .model import OMEZarrImageLayer, OMEZarrLabelsLayer
 
 try:
     from ome_zarr.io import ZarrLocation
@@ -33,7 +33,7 @@ def read_ome_zarr_image(path: PathLike) -> Image:
     basename = multiscales.zarr.basename()
     if "axes" not in multiscales.node.metadata:
         raise BioImageOMEZarrException(f"{basename} does not contain axes metadata")
-    image = OMEZarrImage(name=basename, zarr_file=str(path))
+    image = Image(name=basename)
     for image_layer in _get_image_layers(image, multiscales):
         image.layers.append(image_layer)
     if label_multiscales is not None:
@@ -74,7 +74,7 @@ def _try_get_label_multiscales(
 
 
 def _get_image_layers(
-    image: OMEZarrImage, multiscales: Multiscales
+    image: Image, multiscales: Multiscales
 ) -> Generator[OMEZarrImageLayer, None, None]:
     channel_axes = [
         axis
@@ -120,7 +120,7 @@ def _get_image_layers(
 
 
 def _try_get_labels_layers(
-    image: OMEZarrImage, label_multiscales: Dict[str, Multiscales]
+    image: Image, label_multiscales: Dict[str, Multiscales]
 ) -> Generator[OMEZarrLabelsLayer, None, None]:
     for label_name, multiscales in label_multiscales.items():
         try:

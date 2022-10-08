@@ -2,11 +2,7 @@ from typing import Sequence
 
 from dask.array import Array
 
-from napari_bioimage.model import Image, Layer
-
-
-class OMEZarrImage(Image):
-    zarr_file: str
+from napari_bioimage.model import Layer
 
 
 class OMEZarrLayer(Layer):
