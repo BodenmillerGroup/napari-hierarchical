@@ -6,12 +6,14 @@ except ImportError:
 from ._controller import BioImageController, BioImageControllerException, controller
 from ._exceptions import BioImageException
 from ._reader import napari_get_reader
-from .contrib import imc, ome_zarr
+from .contrib import imc, ome_zarr, zarr
 
 if imc.available:
     controller.pm.register(imc, name="napari-bioimage-imc")
 if ome_zarr.available:
     controller.pm.register(ome_zarr, name="napari-bioimage-ome-zarr")
+if zarr.available:
+    controller.pm.register(zarr, name="napari-bioimage-zarr")
 
 __all__ = [
     "BioImageController",
