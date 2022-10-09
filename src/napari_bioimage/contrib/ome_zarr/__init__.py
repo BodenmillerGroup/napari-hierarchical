@@ -13,7 +13,6 @@ from napari_bioimage.hookspecs import (
 )
 from napari_bioimage.model import Image, Layer
 
-from ._exceptions import BioImageOMEZarrException
 from ._reader import load_ome_zarr_layer, read_ome_zarr_image
 from ._writer import save_ome_zarr_layer, write_ome_zarr_image
 from .model import OMEZarrLayer
@@ -34,7 +33,7 @@ hookimpl = HookimplMarker("napari-bioimage")
 
 @hookimpl
 def napari_bioimage_get_image_reader(path: PathLike) -> Optional[ImageReaderFunction]:
-    if Path(path).suffix == ".zarr":
+    if available and Path(path).suffix == ".zarr":
         zarr_location = ZarrLocation(str(path))
         if zarr_location.exists() and Multiscales.matches(zarr_location):
             return read_ome_zarr_image
@@ -43,7 +42,7 @@ def napari_bioimage_get_image_reader(path: PathLike) -> Optional[ImageReaderFunc
 
 @hookimpl
 def napari_bioimage_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunction]:
-    if isinstance(layer, OMEZarrLayer):
+    if available and isinstance(layer, OMEZarrLayer):
         return load_ome_zarr_layer
     return None
 
@@ -53,7 +52,7 @@ def napari_bioimage_get_image_writer(
     path: PathLike, image: Image
 ) -> Optional[ImageWriterFunction]:
     # TODO
-    # if Path(path).suffix == ".zarr":
+    # if available and Path(path).suffix == ".zarr":
     #     return write_ome_zarr_image
     return None
 
@@ -63,7 +62,7 @@ def napari_bioimage_get_layer_saver(
     layer: Layer, napari_layer: NapariLayer
 ) -> Optional[LayerSaverFunction]:
     # TODO
-    # if isinstance(layer, OMEZarrLayer):
+    # if available and isinstance(layer, OMEZarrLayer):
     #     return save_ome_zarr_layer
     return None
 
@@ -74,7 +73,6 @@ __all__ = [
     "read_ome_zarr_image",
     "save_ome_zarr_layer",
     "write_ome_zarr_image",
-    "BioImageOMEZarrException",
     "napari_bioimage_get_image_reader",
     "napari_bioimage_get_layer_loader",
     "napari_bioimage_get_image_writer",

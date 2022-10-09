@@ -58,7 +58,10 @@ class BioImageController:
         image_reader_function = self._get_image_reader_function(path)
         if image_reader_function is None:
             raise BioImageControllerException(f"No reader found for {path}")
-        image = image_reader_function(path)
+        try:
+            image = image_reader_function(path)
+        except Exception as e:
+            raise BioImageControllerException(e)
         self._images.append(image)
         return image
 
@@ -66,7 +69,10 @@ class BioImageController:
         image_writer_function = self._get_image_writer_function(path, image)
         if image_writer_function is None:
             raise BioImageControllerException(f"No writer found for {path}")
-        image_writer_function(path, image)
+        try:
+            image_writer_function(path, image)
+        except Exception as e:
+            raise BioImageControllerException(e)
 
     def register_viewer(self, viewer: Viewer) -> None:
         assert self._viewer is None
