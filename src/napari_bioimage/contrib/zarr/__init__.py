@@ -31,7 +31,7 @@ hookimpl = HookimplMarker("napari-bioimage")
 
 @hookimpl
 def napari_bioimage_get_image_reader(path: PathLike) -> Optional[ImageReaderFunction]:
-    if available and Path(path).suffix == ".zarr":
+    if available and any(part.endswith(".zarr") for part in Path(path).parts):
         return read_zarr_image
     return None
 
@@ -48,7 +48,7 @@ def napari_bioimage_get_image_writer(
     path: PathLike, image: Image
 ) -> Optional[ImageWriterFunction]:
     # TODO
-    # if available and Path(path).suffix == ".zarr":
+    # if available and any(part.endswith(".zarr") for part in Path(path).parts):
     #     return write_zarr_image
     return None
 

@@ -20,10 +20,15 @@ PathLike = Union[str, os.PathLike]
 
 def read_zarr_image(path: PathLike) -> Image:
     z = zarr.open(store=path, mode="r")
+    zarr_file = Path(path)
+    while zarr_file is not None and zarr_file.suffix != ".zarr":
+        zarr_file = zarr_file.parent
+    assert zarr_file is not None
+    name = str(Path(path).relative_to(zarr_file.parent))
     if isinstance(z, zarr.Array):
-        return _create_image(Path(path).name, z)
+        return _create_image(name, z)
     if isinstance(z, zarr.Group):
-        return _create_image_group(Path(path).name, z)
+        return _create_image_group(name, z)
     raise TypeError(f"Unsupported zarr type: {type(z)}")
 
 
