@@ -12,7 +12,6 @@ image_url = (
     "https://github.com/BodenmillerGroup/TestData/raw/main/datasets"
     "/210308_ImcTestData/raw/20210305_NE_mockData1/20210305_NE_mockData1.mcd"
 )
-
 temp_dir = TemporaryDirectory()
 
 

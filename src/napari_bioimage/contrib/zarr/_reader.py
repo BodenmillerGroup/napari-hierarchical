@@ -32,7 +32,9 @@ def _create_image(
 ) -> Image:
     image = Image(name=name, parent=parent)
     layer = ZarrLayer(
-        name=f"{array.path} [{array.name}]", image=image, data=da.from_zarr(array)
+        name=f"{Path(array.path).name} [{array.name}]",
+        image=image,
+        data=da.from_zarr(array),
     )
     image.layers.append(layer)
     return image
