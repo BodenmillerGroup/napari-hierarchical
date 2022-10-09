@@ -34,7 +34,7 @@ def read_ome_zarr_image(path: PathLike) -> Image:
     return image
 
 
-def _get_label_multiscales(zarr_reader: ZarrReader) -> Dict[str, Multiscales]:
+def _get_label_multiscales(zarr_reader: "ZarrReader") -> Dict[str, "Multiscales"]:
     label_multiscales = {}
     for labels_zarr_node in zarr_reader():
         if (
@@ -57,7 +57,7 @@ def _get_label_multiscales(zarr_reader: ZarrReader) -> Dict[str, Multiscales]:
 
 
 def _get_image_layers(
-    image: Image, multiscales: Multiscales
+    image: Image, multiscales: "Multiscales"
 ) -> Generator[OMEZarrImageLayer, None, None]:
     channel_axes = [
         axis
@@ -96,7 +96,7 @@ def _get_image_layers(
 
 
 def _get_labels_layers(
-    image: Image, label_multiscales: Dict[str, Multiscales]
+    image: Image, label_multiscales: Dict[str, "Multiscales"]
 ) -> Generator[OMEZarrLabelsLayer, None, None]:
     for label_name, multiscales in label_multiscales.items():
         try:
