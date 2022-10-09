@@ -14,6 +14,9 @@ contributions:
     - id: napari-bioimage.sample_data.imc_mock
       python_name: napari_bioimage.sample_data.imc_mock:make_sample_data
       title: Make IMC mock sample data
+    - id: napari-bioimage.sample_data.pollen
+      python_name: napari_bioimage.sample_data.pollen:make_sample_data
+      title: Make pollen sample data
   readers:
     - command: napari-bioimage.get_reader
       accepts_directories: false
@@ -33,3 +36,6 @@ contributions:
     - key: imc_mock
       display_name: IMC mock dataset (Bodenmiller group, University of Zurich)
       command: napari-bioimage.sample_data.imc_mock
+    - key: pollen
+      display_name: 3D confocal data of a pollen grain (Computer Vision Group, University of Freiburg)
+      command: napari-bioimage.sample_data.pollen
