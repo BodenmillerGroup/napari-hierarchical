@@ -8,15 +8,18 @@ contributions:
     - id: napari-bioimage.make_widget
       python_name: napari_bioimage.widgets:QBioImageWidget
       title: Make napari-bioimage widget
-    - id: napari-bioimage.sample_data.idr0052A
-      python_name: napari_bioimage.sample_data.idr0052A:make_sample_data
-      title: Make idr0052A sample data
     - id: napari-bioimage.sample_data.imc_mock
       python_name: napari_bioimage.sample_data.imc_mock:make_sample_data
       title: Make IMC mock sample data
     - id: napari-bioimage.sample_data.pollen
       python_name: napari_bioimage.sample_data.pollen:make_sample_data
       title: Make pollen sample data
+    - id: napari-bioimage.sample_data.idr0052A_ome_zarr
+      python_name: napari_bioimage.sample_data.idr0052A:make_ome_zarr_sample_data
+      title: Make idr0052A OME-Zarr sample data
+    - id: napari-bioimage.sample_data.idr0052A_zarr
+      python_name: napari_bioimage.sample_data.idr0052A:make_zarr_sample_data
+      title: Make idr0052A Zarr sample data
   readers:
     - command: napari-bioimage.get_reader
       accepts_directories: false
@@ -25,17 +28,15 @@ contributions:
     - command: napari-bioimage.make_widget
       display_name: images
   sample_data:
-    # FIXME https://github.com/napari/napari/issues/5102
-    # - key: idr0052A
-    #   display_name: confocal 3D time-lapse imaging of human condensins (Walther et al., 2018)
-    #   uri: https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.4/idr0052A/5514375.zarr
-    #   reader_plugin: napari-bioimage
-    - key: idr0052A
-      display_name: confocal 3D time-lapse imaging of human condensins (Walther et al., 2018)
-      command: napari-bioimage.sample_data.idr0052A
     - key: imc_mock
       display_name: IMC mock dataset (Bodenmiller group, University of Zurich)
       command: napari-bioimage.sample_data.imc_mock
     - key: pollen
-      display_name: 3D confocal data of a pollen grain (Computer Vision Group, University of Freiburg)
+      display_name: 3D confocal imaging of a pollen grain (Computer Vision Group, University of Freiburg)
       command: napari-bioimage.sample_data.pollen
+    - key: idr0052A_ome_zarr
+      display_name: 3D confocal time-lapse imaging of human condensins (Walther et al., 2018; as OME-Zarr)
+      command: napari-bioimage.sample_data.idr0052A_ome_zarr
+    - key: idr0052A_zarr
+      display_name: 3D confocal time-lapse imaging of human condensins (Walther et al., 2018; as Zarr)
+      command: napari-bioimage.sample_data.idr0052A_zarr

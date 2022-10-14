@@ -32,3 +32,25 @@ def make_sample_data():
         _, widget = viewer.window.add_plugin_dock_widget("napari-bioimage")
         assert controller.widget == widget
     return []
+
+
+def make_zarr_sample_data():
+    from ..contrib import ome_zarr
+
+    orig_ome_zarr_available = ome_zarr.available
+    try:
+        ome_zarr.available = False
+        return make_sample_data()
+    finally:
+        ome_zarr.available = orig_ome_zarr_available
+
+
+def make_ome_zarr_sample_data():
+    from ..contrib import zarr
+
+    orig_zarr_available = zarr.available
+    try:
+        zarr.available = False
+        return make_sample_data()
+    finally:
+        zarr.available = orig_zarr_available
