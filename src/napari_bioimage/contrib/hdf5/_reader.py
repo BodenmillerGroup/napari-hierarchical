@@ -52,7 +52,7 @@ def _create_image_group(
     return image_group
 
 
-def load_hdf5_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
+def read_hdf5_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
     if isinstance(layer, HDF5Layer):
         return viewer.add_image(data=layer.data, name=layer.name)
     raise TypeError(f"Unsupported layer type: {type(layer)}")

@@ -114,7 +114,7 @@ def _get_labels_layers(
         yield labels_layer
 
 
-def load_ome_zarr_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
+def read_ome_zarr_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
     if isinstance(layer, OMEZarrImageLayer):
         return viewer.add_image(data=layer.data, name=layer.name, multiscale=True)
     if isinstance(layer, OMEZarrLabelsLayer):

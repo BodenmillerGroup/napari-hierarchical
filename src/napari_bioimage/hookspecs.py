@@ -10,8 +10,8 @@ from .model import Image, Layer
 PathLike = Union[str, os.PathLike]
 ImageReaderFunction = Callable[[PathLike], Image]
 ImageWriterFunction = Callable[[PathLike, Image], None]
-LayerLoaderFunction = Callable[[Layer, Viewer], NapariLayer]
-LayerSaverFunction = Callable[[Layer, Viewer, NapariLayer], None]
+LayerReaderFunction = Callable[[Layer, Viewer], NapariLayer]
+LayerWriterFunction = Callable[[Layer, Viewer, NapariLayer], None]
 
 hookspec = HookspecMarker("napari-bioimage")
 
@@ -29,14 +29,12 @@ def napari_bioimage_get_image_writer(
 
 
 @hookspec(firstresult=True)
-def napari_bioimage_get_layer_loader(
-    layer: Layer,
-) -> Optional[LayerLoaderFunction]:
+def napari_bioimage_get_layer_reader(layer: Layer) -> Optional[LayerReaderFunction]:
     pass
 
 
 @hookspec(firstresult=True)
-def napari_bioimage_get_layer_saver(
+def napari_bioimage_get_layer_writer(
     layer: Layer, napari_layer: NapariLayer
-) -> Optional[LayerSaverFunction]:
+) -> Optional[LayerWriterFunction]:
     pass

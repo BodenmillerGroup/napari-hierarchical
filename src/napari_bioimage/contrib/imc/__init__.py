@@ -4,10 +4,10 @@ from typing import Optional, Union
 
 from pluggy import HookimplMarker
 
-from napari_bioimage.hookspecs import ImageReaderFunction, LayerLoaderFunction
+from napari_bioimage.hookspecs import ImageReaderFunction, LayerReaderFunction
 from napari_bioimage.model import Layer
 
-from ._reader import load_imc_layer, read_imc_image
+from ._reader import read_imc_image, read_imc_layer
 from .model import IMCLayer
 
 try:
@@ -30,16 +30,16 @@ def napari_bioimage_get_image_reader(path: PathLike) -> Optional[ImageReaderFunc
 
 
 @hookimpl
-def napari_bioimage_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunction]:
+def napari_bioimage_get_layer_reader(layer: Layer) -> Optional[LayerReaderFunction]:
     if available and isinstance(layer, IMCLayer):
-        return load_imc_layer
+        return read_imc_layer
     return None
 
 
 __all__ = [
     "available",
-    "load_imc_layer",
     "read_imc_image",
+    "read_imc_layer",
     "napari_bioimage_get_image_reader",
-    "napari_bioimage_get_layer_loader",
+    "napari_bioimage_get_layer_reader",
 ]

@@ -8,13 +8,13 @@ from pluggy import HookimplMarker
 from napari_bioimage.hookspecs import (
     ImageReaderFunction,
     ImageWriterFunction,
-    LayerLoaderFunction,
-    LayerSaverFunction,
+    LayerReaderFunction,
+    LayerWriterFunction,
 )
 from napari_bioimage.model import Image, Layer
 
-from ._reader import load_zarr_layer, read_zarr_image
-from ._writer import save_zarr_layer, write_zarr_image
+from ._reader import read_zarr_image, read_zarr_layer
+from ._writer import write_zarr_image, write_zarr_layer
 from .model import ZarrLayer
 
 try:
@@ -37,9 +37,9 @@ def napari_bioimage_get_image_reader(path: PathLike) -> Optional[ImageReaderFunc
 
 
 @hookimpl
-def napari_bioimage_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunction]:
+def napari_bioimage_get_layer_reader(layer: Layer) -> Optional[LayerReaderFunction]:
     if available and isinstance(layer, ZarrLayer):
-        return load_zarr_layer
+        return read_zarr_layer
     return None
 
 
@@ -54,9 +54,9 @@ def napari_bioimage_get_image_writer(
 
 
 @hookimpl
-def napari_bioimage_get_layer_saver(
+def napari_bioimage_get_layer_writer(
     layer: Layer, napari_layer: NapariLayer
-) -> Optional[LayerSaverFunction]:
+) -> Optional[LayerWriterFunction]:
     # TODO
     # if available and isinstance(layer, ZarrLayer):
     #     return save_zarr_layer
@@ -65,12 +65,12 @@ def napari_bioimage_get_layer_saver(
 
 __all__ = [
     "available",
-    "load_zarr_layer",
     "read_zarr_image",
-    "save_zarr_layer",
+    "read_zarr_layer",
     "write_zarr_image",
+    "write_zarr_layer",
     "napari_bioimage_get_image_reader",
-    "napari_bioimage_get_layer_loader",
+    "napari_bioimage_get_layer_reader",
     "napari_bioimage_get_image_writer",
-    "napari_bioimage_get_layer_saver",
+    "napari_bioimage_get_layer_writer",
 ]

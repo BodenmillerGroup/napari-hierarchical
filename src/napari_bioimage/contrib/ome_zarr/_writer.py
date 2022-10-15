@@ -13,7 +13,7 @@ def write_ome_zarr_image(path: PathLike, image: Image) -> None:
     raise NotImplementedError()  # TODO
 
 
-def save_ome_zarr_layer(
+def write_ome_zarr_layer(
     layer: Layer, viewer: Viewer, napari_layer: NapariLayer
 ) -> None:
     raise NotImplementedError()  # TODO

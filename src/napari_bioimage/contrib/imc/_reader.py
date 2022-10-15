@@ -72,7 +72,7 @@ def read_imc_image(path: PathLike) -> Image:
     return group
 
 
-def load_imc_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
+def read_imc_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
     if isinstance(layer, IMCPanoramaLayer):
         with MCDFile(layer.mcd_file) as f:
             slide = next(slide for slide in f.slides if slide.id == layer.slide_id)

@@ -60,7 +60,7 @@ def _create_image_group(
     return image_group
 
 
-def load_zarr_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
+def read_zarr_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
     if isinstance(layer, ZarrLayer):
         return viewer.add_image(data=layer.data, name=layer.name)
     raise TypeError(f"Unsupported layer type: {type(layer)}")
