@@ -8,13 +8,13 @@ def napari_get_reader(path):
         if len(path) != 1:
             return None
         path = path[0]
-    if controller.can_read_image(path):
+    if controller.can_read(path):
         return _reader_function
     return None
 
 
 def _reader_function(path):
-    controller.read_image(path)
+    controller.read(path)
     viewer = controller.viewer or current_viewer()
     assert viewer is not None
     if controller.viewer != viewer:

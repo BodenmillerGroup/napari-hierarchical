@@ -23,7 +23,7 @@ def configure_s3() -> S3FileSystem:
 
 def make_sample_data():
     with configure_s3():
-        controller.read_image(image_url)
+        controller.read(image_url)
     viewer = controller.viewer or current_viewer()
     assert viewer is not None
     if controller.viewer != viewer:

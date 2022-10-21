@@ -23,12 +23,12 @@ This plugin adds the following concepts to napari:
   - Images may contain "child images" --> image trees
   - The (user-editable) image trees are shown in the *Images* panel
   - Reading an image means loading its tree (added as a "root node", without loading data)
-  - Writing an image means creating an image container on disk and writing all associated layers to it
+  - Writing an image means creating an image container on disk and saving all associated layers to it
   - Selecting an image selects all layers associated with its (sub-)tree
 - *Layers* are viewable objects (cf. original napari layers, e.g. images, labels)
-  - Every layer belongs to an image (no correspondence to physical files on disk)
-  - "Anonymous layers" (cf. original napari layers) are assigned to a "New image" upon creation
-  - Layers can be read/written independently from/to images (lazy reading/writing of images)
+  - Every layer belongs to an image (no direct correspondence to physical files on disk)
+  - "Anonymous layers" (cf. original napari layers) are assigned to a "New Image" upon creation
+  - Layers can be loaded/saved independently from/to images ("lazy reading/writing of images")
   - Layers may be moved from one image to another in memory by the user
 - Layers are *grouped* by layer metadata (flat groupings across all images, e.g. by channel/label label name)
   - Layer groupings are shown in the *Layers* panel, containing one tab for each metadata grouping (key)
@@ -52,11 +52,11 @@ To install latest development version :
 
 This plugin implements reader, writer, and widget functionality. The reader reads an image (not actual image data, see description above) and opens the `napari_bioimage.widget.QBioImageWidget` widget. The writer writes the selected layers (not the entire image, see description above). All operations are done through the `napari_bioimage.controller` singleton instance, which "extends" the functionality of `napari.viewer.Viewer`.
 
-Image/layer readers/writers are implemented as plugins using [pluggy](https://pluggy.readthedocs.io), similar to the [first-generation napari plugin engine](https://github.com/napari/napari-plugin-engine). Out of the box, this plugin ships with readers/writers for HDF5, Zarr, OME-Zarr, and imaging mass cytometry (IMC) file formats, implemented in `napari_bioimage.contrib`. Additionally, the plugin supports "traditional" napari reader contributions.
+Image readers/writers are implemented as plugins using [pluggy](https://pluggy.readthedocs.io), similar to the [first-generation napari plugin engine](https://github.com/napari/napari-plugin-engine). Out of the box, this plugin ships with readers/writers for HDF5, Zarr, OME-Zarr, and imaging mass cytometry (IMC) file formats, implemented in `napari_bioimage.contrib`. Additionally, the plugin supports "traditional" napari reader contributions.
 
 The hierarchical image/layer model (composite tree pattern) is implemented in `napari_bioimage.model`. For consistency with the original napari layer model, all model classes inherit from `napari.utils.events.EventedModel`. This renders the creation of lazy models (e.g. for representing the whole file system) impossible, which is intended. Despite implementing a composite tree pattern, the model classes do not inherit from `napari.utils.tree` to avoid problems due to multiple inheritance/pydantic.
 
-The Qt tree model is implemented in `napari_bioimage.widgets.QImageTreeModel`. It wraps the image/layer model in "node classes" (proxy model) that implement the composite tree pattern in `napari.utils.tree`, primarily to store runtime information associated with each node (e.g. callback references). This is necessary because pydantic models are not hashable and therefore cannot serve as keys for dictionaries, which could otherwise hold the runtime information.
+The Qt tree model is implemented in `napari_bioimage.widgets.QImageTreeModel`. For listening to model changes, due to [problems with propagating events in nested EventedModel/EventedList hierarchies](https://napari.zulipchat.com/#narrow/stream/212875-general/topic/.E2.9C.94.20model.20events.20propagation), individual event handlers need to be registered for each ImageGroup instance. Until this issue gets resolved, as a workaround, the callback references are stored directly in `napari_bioimage.model.ImageGroup`.
 
 ## Contributing
 

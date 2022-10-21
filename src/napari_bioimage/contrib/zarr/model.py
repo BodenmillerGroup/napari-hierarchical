@@ -1,18 +1,24 @@
-from typing import TYPE_CHECKING
+from napari.layers import Image as NapariImageLayer
+from napari.layers import Layer as NapariLayer
 
 from napari_bioimage.model import Layer
 
-if TYPE_CHECKING:
-    from dask.array import Array
+try:
+    import dask.array as da
+    import zarr
+except ModuleNotFoundError:
+    da = None
+    zarr = None
 
 
 class ZarrLayer(Layer):
-    _data: "Array"
+    zarr_file: str
+    path: str
 
-    def __init__(self, *, data: "Array", **kwargs):
-        super().__init__(**kwargs)
-        self._data = data
+    def load(self) -> NapariLayer:
+        z = zarr.open(store=self.zarr_file, mode="r")
+        data = da.from_zarr(z[self.path])
+        return NapariImageLayer(name=self.name, data=data)
 
-    @property
-    def data(self) -> "Array":
-        return self._data
+    def save(self) -> None:
+        raise NotImplementedError()  # TODO

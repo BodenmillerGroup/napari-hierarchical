@@ -2,24 +2,21 @@ import os
 from pathlib import Path
 from typing import Union
 
-from napari.layers import Layer as NapariLayer
-from napari.viewer import Viewer
-
-from napari_bioimage.model import Image, ImageGroup, Layer
+from napari_bioimage.model import Image, ImageGroup
 
 from .model import IMCAcquisitionLayer, IMCPanoramaLayer
 
 try:
-    from readimc import MCDFile
+    import readimc
 except ModuleNotFoundError:
-    pass  # skipped intentionally
+    readimc = None
 
 PathLike = Union[str, os.PathLike]
 
 
-def read_imc_image(path: PathLike) -> Image:
+def read_imc(path: PathLike) -> Image:
     group = ImageGroup(name=Path(path).name)
-    with MCDFile(path) as f:
+    with readimc.MCDFile(path) as f:
         for slide in f.slides:
             slide_group = ImageGroup(
                 name=f"[S{slide.id:02d}] {slide.description}", parent=group
@@ -70,32 +67,3 @@ def read_imc_image(path: PathLike) -> Image:
             slide_group.children.append(acquisitions_group)
             group.children.append(slide_group)
     return group
-
-
-def read_imc_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
-    if isinstance(layer, IMCPanoramaLayer):
-        with MCDFile(layer.mcd_file) as f:
-            slide = next(slide for slide in f.slides if slide.id == layer.slide_id)
-            panorama = next(
-                panorama
-                for panorama in slide.panoramas
-                if panorama.id == layer.panorama_id
-            )
-            data = f.read_panorama(panorama)
-        return viewer.add_image(
-            data=data, name=layer.name, metadata={"napari_bioimage_layer": layer}
-        )  # TODO scale, translation, rotation
-    if isinstance(layer, IMCAcquisitionLayer):
-        with MCDFile(layer.mcd_file) as f:
-            slide = next(slide for slide in f.slides if slide.id == layer.slide_id)
-            acquisition = next(
-                acquisition
-                for acquisition in slide.acquisitions
-                if acquisition.id == layer.acquisition_id
-            )
-            data = f.read_acquisition(acquisition)[layer.channel_index]
-        # TODO read acquisition from TXT if reading from MCD failes
-        return viewer.add_image(
-            data=data, name=layer.name, metadata={"napari_bioimage_layer": layer}
-        )  # TODO scale, rotation, translation
-    raise TypeError(f"Unsupported layer type: {type(layer)}")

@@ -7,7 +7,7 @@ from pluggy import PluginManager
 
 from . import hookspecs
 from ._exceptions import BioImageException
-from .model import Image, Layer
+from .model import Image
 
 if TYPE_CHECKING:
     from .widgets import QBioImageWidget
@@ -25,52 +25,44 @@ class BioImageController:
         self._images: EventedList[Image] = EventedList(
             basetype=Image, lookup={str: lambda image: image.name}
         )
-        self._layers: EventedList[Layer] = EventedList(
-            basetype=Layer, lookup={str: lambda layer: layer.name}
-        )
-        self._selected_layers: EventedList[Layer] = EventedList(
-            basetype=Layer, lookup={str: lambda layer: layer.name}
-        )
 
-    def _get_image_reader_function(
+    def _get_reader_function(
         self, path: PathLike
-    ) -> Optional[hookspecs.ImageReaderFunction]:
-        image_reader_function = self._pm.hook.napari_bioimage_get_image_reader(
-            path=path
-        )
-        return image_reader_function
+    ) -> Optional[hookspecs.ReaderFunction]:
+        reader_function = self._pm.hook.napari_bioimage_get_reader(path=path)
+        return reader_function
 
-    def _get_image_writer_function(
+    def _get_writer_function(
         self, path: PathLike, image: Image
-    ) -> Optional[hookspecs.ImageWriterFunction]:
-        image_writer_function = self._pm.hook.napari_bioimage_get_image_writer(
+    ) -> Optional[hookspecs.WriterFunction]:
+        writer_function = self._pm.hook.napari_bioimage_get_writer(
             path=path, image=image
         )
-        return image_writer_function
+        return writer_function
 
-    def can_read_image(self, path: PathLike) -> bool:
-        return self._get_image_reader_function(path) is not None
+    def can_read(self, path: PathLike) -> bool:
+        return self._get_reader_function(path) is not None
 
-    def can_write_image(self, path: PathLike, image: Image) -> bool:
-        return self._get_image_writer_function(path, image) is not None
+    def can_write(self, path: PathLike, image: Image) -> bool:
+        return self._get_writer_function(path, image) is not None
 
-    def read_image(self, path: PathLike) -> Image:
-        image_reader_function = self._get_image_reader_function(path)
-        if image_reader_function is None:
+    def read(self, path: PathLike) -> Image:
+        reader_function = self._get_reader_function(path)
+        if reader_function is None:
             raise BioImageControllerException(f"No reader found for {path}")
         try:
-            image = image_reader_function(path)
+            image = reader_function(path)
         except Exception as e:
             raise BioImageControllerException(e)
         self._images.append(image)
         return image
 
-    def write_image(self, path: PathLike, image: Image) -> None:
-        image_writer_function = self._get_image_writer_function(path, image)
-        if image_writer_function is None:
+    def write(self, path: PathLike, image: Image) -> None:
+        writer_function = self._get_writer_function(path, image)
+        if writer_function is None:
             raise BioImageControllerException(f"No writer found for {path}")
         try:
-            image_writer_function(path, image)
+            writer_function(path, image)
         except Exception as e:
             raise BioImageControllerException(e)
 
@@ -97,14 +89,6 @@ class BioImageController:
     @property
     def images(self) -> EventedList[Image]:
         return self._images
-
-    @property
-    def layers(self) -> EventedList[Layer]:
-        return self._layers
-
-    @property
-    def selected_layers(self) -> EventedList[Layer]:
-        return self._selected_layers
 
 
 class BioImageControllerException(BioImageException):

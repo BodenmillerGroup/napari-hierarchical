@@ -1,18 +1,24 @@
-from typing import TYPE_CHECKING
+from napari.layers import Image as NapariImageLayer
+from napari.layers import Layer as NapariLayer
 
 from napari_bioimage.model import Layer
 
-if TYPE_CHECKING:
-    from dask.array import Array
+try:
+    import dask.array as da
+    import h5py
+except ModuleNotFoundError:
+    da = None
+    h5py = None
 
 
 class HDF5Layer(Layer):
-    _data: "Array"
+    hdf5_file: str
+    path: str
 
-    def __init__(self, *, data: "Array", **kwargs):
-        super().__init__(**kwargs)
-        self._data = data
+    def load(self) -> NapariLayer:
+        with h5py.File(self.hdf5_file) as f:
+            data = da.from_array(f[self.path])
+        return NapariImageLayer(name=self.name, data=data)
 
-    @property
-    def data(self) -> "Array":
-        return self._data
+    def save(self) -> None:
+        raise NotImplementedError()  # TODO

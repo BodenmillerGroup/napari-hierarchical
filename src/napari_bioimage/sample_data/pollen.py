@@ -22,7 +22,7 @@ def make_sample_data():
         with h5_file.open("wb") as fdst:
             with urlopen(image_url) as fsrc:
                 copyfileobj(fsrc, fdst)
-    controller.read_image(h5_file)
+    controller.read(h5_file)
     viewer = controller.viewer or current_viewer()
     assert viewer is not None
     if controller.viewer != viewer:

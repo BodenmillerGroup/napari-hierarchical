@@ -1,17 +1,10 @@
 import os
 from typing import Union
 
-from napari.layers import Layer as NapariLayer
-from napari.viewer import Viewer
-
-from napari_bioimage.model import Image, Layer
+from napari_bioimage.model import Image
 
 PathLike = Union[str, os.PathLike]
 
 
-def write_zarr_image(path: PathLike, image: Image) -> None:
-    raise NotImplementedError()  # TODO
-
-
-def write_zarr_layer(layer: Layer, viewer: Viewer, napari_layer: NapariLayer) -> None:
+def write_zarr(path: PathLike, image: Image) -> None:
     raise NotImplementedError()  # TODO

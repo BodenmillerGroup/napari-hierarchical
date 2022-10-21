@@ -2,28 +2,24 @@ import os
 from pathlib import Path
 from typing import Optional, Union
 
-from napari.layers import Layer as NapariLayer
-from napari.viewer import Viewer
-
-from napari_bioimage.model import Image, ImageGroup, Layer
+from napari_bioimage.model import Image, ImageGroup
 
 from .model import ZarrLayer
 
 try:
-    import dask.array as da
     import zarr
 except ModuleNotFoundError:
-    pass  # ignored intentionally
+    zarr = None
 
 PathLike = Union[str, os.PathLike]
 
 
-def read_zarr_image(path: PathLike) -> Image:
-    z = zarr.open(store=path, mode="r")
+def read_zarr(path: PathLike) -> Image:
     zarr_file = Path(path)
     while zarr_file is not None and zarr_file.suffix != ".zarr":
         zarr_file = zarr_file.parent
     assert zarr_file is not None
+    z = zarr.open(store=path, mode="r")
     name = str(Path(path).relative_to(zarr_file.parent))
     if isinstance(z, zarr.Array):
         return _create_image(name, z)
@@ -39,7 +35,8 @@ def _create_image(
     layer = ZarrLayer(
         name=f"{Path(array.path).name} [{array.name}]",
         image=image,
-        data=da.from_zarr(array),
+        zarr_file=array.path,
+        path=array.name,
     )
     image.layers.append(layer)
     return image
@@ -58,9 +55,3 @@ def _create_image_group(
         child_image = _create_image(child_array_name, child_array, parent=image_group)
         image_group.children.append(child_image)
     return image_group
-
-
-def read_zarr_layer(layer: Layer, viewer: Viewer) -> NapariLayer:
-    if isinstance(layer, ZarrLayer):
-        return viewer.add_image(data=layer.data, name=layer.name)
-    raise TypeError(f"Unsupported layer type: {type(layer)}")
