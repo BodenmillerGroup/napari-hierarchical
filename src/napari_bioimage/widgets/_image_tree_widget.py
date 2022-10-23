@@ -18,6 +18,13 @@ class QImageTreeWidget(QWidget):
         self._controller = controller
         self._image_tree_view = QTreeView()
         self._image_tree_view.setHeaderHidden(True)
+        self._image_tree_view.setSelectionMode(
+            QTreeView.SelectionMode.ExtendedSelection
+        )
+        self._image_tree_view.setDragEnabled(True)
+        self._image_tree_view.setAcceptDrops(True)
+        self._image_tree_view.setDropIndicatorShown(True)
+        self._image_tree_view.setDragDropMode(QTreeView.DragDropMode.InternalMove)
         self._image_tree_model = QImageTreeModel(controller)
         self._image_tree_view.setModel(self._image_tree_model)
         self.setupUI()
