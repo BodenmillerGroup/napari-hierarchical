@@ -1,6 +1,5 @@
 import pickle
-from contextlib import contextmanager
-from typing import Any, Iterable, List, NamedTuple, Optional
+from typing import Any, Iterable, List, NamedTuple, Optional, Sequence
 
 from napari.utils.events import Event
 from qtpy.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QObject, Qt
@@ -24,7 +23,6 @@ class QImageTreeModel(QAbstractItemModel):
     ) -> None:
         super().__init__(parent)
         self._controller = controller
-        self._ignore_images_changed = False
         self._controller.images.events.connect(self._on_images_changed)
         for image in self._controller.images:
             self._connect_image(image)
@@ -33,13 +31,6 @@ class QImageTreeModel(QAbstractItemModel):
         for image in self._controller.images:
             self._disconnect_image(image)
         self._controller.images.events.disconnect(self._on_images_changed)
-
-    @contextmanager
-    def ignore_images_changed(self):
-        assert not self._ignore_images_changed
-        self._ignore_images_changed = True
-        yield
-        self._ignore_images_changed = False
 
     def index(
         self, row: int, column: int, parent: QModelIndex = QModelIndex()
@@ -122,9 +113,7 @@ class QImageTreeModel(QAbstractItemModel):
             assert isinstance(image, Image)
             assert 0 <= index.column() < len(self.COLUMNS)
             column = self.COLUMNS[index.column()]
-            with self.ignore_images_changed():
-                setattr(image, column.field, value)
-                self.dataChanged.emit(index, index)
+            setattr(image, column.field, value)
             return True
         return False
 
@@ -139,12 +128,9 @@ class QImageTreeModel(QAbstractItemModel):
             parent_image = None
             images = self._controller.images
         if 0 <= row <= len(images) and count > 0:
-            with self.ignore_images_changed():
-                self.beginInsertRows(parent, row, row + count - 1)
-                for i in range(row, row + count):
-                    image = Image(name="New Image", parent=parent_image)
-                    images.insert(i, image)
-                self.endInsertRows()
+            for i in range(row, row + count):
+                image = Image(name="New Image", parent=parent_image)
+                images.insert(i, image)
             return True
         return False
 
@@ -158,10 +144,7 @@ class QImageTreeModel(QAbstractItemModel):
         else:
             images = self._controller.images
         if 0 <= row < row + count <= len(images) and count > 0:
-            with self.ignore_images_changed():
-                self.beginRemoveRows(parent, row, row + count - 1)
-                del images[row : row + count]
-                self.endRemoveRows()
+            del images[row : row + count]
             return True
         return False
 
@@ -220,50 +203,42 @@ class QImageTreeModel(QAbstractItemModel):
                 if row >= 0 and column >= 0:
                     assert 0 <= row + i <= len(images)
                     assert 0 <= column < len(self.COLUMNS)
-                    index = row + i
+                    images.insert(row + i, image)
                 else:
                     assert row == -1
                     assert column == -1
-                    index = len(images)
-                with self.ignore_images_changed():
-                    self.beginInsertRows(parent, index, index)
-                    images.insert(index, image)
-                    self.endInsertRows()
+                    images.insert(len(images), image)
             return True
         return False
 
-    def _on_images_changed(self, event: Event, image: Optional[Image] = None) -> None:
-        if self._ignore_images_changed:
+    def _on_images_changed(
+        self, event: Event, parent_image: Optional[Image] = None
+    ) -> None:
+        if not isinstance(event.sources[0], Sequence):
             return
-        if isinstance(event.sources[0], Image):  # catch EventedModel events
-            self._on_image_changed(event, event.sources[0])
-            return
+        print("images:", event.type)
 
-        def parent_index():
-            if image is not None:
-                if image.parent is not None:
-                    row = image.parent.children.index(image)
+        def get_parent():
+            if parent_image is not None:
+                if parent_image.parent is not None:
+                    parent_row = parent_image.parent.children.index(parent_image)
                 else:
-                    row = self._controller.images.index(image)
-                return self.createIndex(row, 0, object=image)
+                    parent_row = self._controller.images.index(parent_image)
+                return self.createIndex(parent_row, 0, object=parent_image)
             return QModelIndex()
 
-        # event.sources does not seem to work properly for nested EventedLists
-        if image is not None:
-            images = image.children
-        else:
-            images = self._controller.images
-
+        images = event.source
+        assert isinstance(images, Sequence)
         if event.type == "inserting":
             assert isinstance(event.index, int) and 0 <= event.index <= len(images)
-            self.beginInsertRows(parent_index(), event.index, event.index)
+            self.beginInsertRows(get_parent(), event.index, event.index)
         elif event.type == "inserted":
             self.endInsertRows()
             assert isinstance(event.value, Image)
             self._connect_image(event.value)
         elif event.type == "removing":
             assert isinstance(event.index, int) and 0 <= event.index < len(images)
-            self.beginRemoveRows(parent_index(), event.index, event.index)
+            self.beginRemoveRows(get_parent(), event.index, event.index)
         elif event.type == "removed":
             self.endRemoveRows()
             assert isinstance(event.value, Image)
@@ -275,7 +250,7 @@ class QImageTreeModel(QAbstractItemModel):
                 and 0 <= event.new_index <= len(images)
                 and event.new_index != event.index
             )
-            parent = parent_index()
+            parent = get_parent()
             self.beginMoveRows(
                 parent, event.index, event.index, parent, event.new_index
             )
@@ -295,7 +270,12 @@ class QImageTreeModel(QAbstractItemModel):
             )
             self.dataChanged.emit(top_left_index, bottom_right_index)
 
-    def _on_image_changed(self, event: Event, image: Image) -> None:
+    def _on_image_changed(self, event: Event) -> None:
+        if not isinstance(event.sources[0], Image):
+            return
+        print("image:", event.type)
+        image = event.source
+        assert isinstance(image, Image)
         column_index = next(
             (i for i, c in enumerate(self.COLUMNS) if c.field == event.type), None
         )
@@ -309,10 +289,10 @@ class QImageTreeModel(QAbstractItemModel):
 
     def _connect_image(self, image: Image) -> None:
         assert image._children_callback is None
+        image.events.connect(self._on_image_changed)
         image._children_callback = image.children.events.connect(
-            lambda e: self._on_images_changed(e, image=image)
+            lambda e: self._on_images_changed(e, parent_image=image)
         )
-        assert image._children_callback is not None
         for child_image in image.children:
             self._connect_image(child_image)
 
@@ -320,5 +300,6 @@ class QImageTreeModel(QAbstractItemModel):
         for child_image in image.children:
             self._disconnect_image(child_image)
         assert image._children_callback is not None
+        image.events.disconnect(self._on_image_changed)
         image.children.events.disconnect(callback=image._children_callback)
         image._children_callback = None
