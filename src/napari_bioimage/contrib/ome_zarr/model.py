@@ -37,7 +37,8 @@ class OMEZarrImageLayer(OMEZarrLayer):
             data = [
                 np.take(a, self.channel_index, axis=self.channel_axis) for a in data
             ]
-        return NapariImageLayer(name=self.name, data=data, multiscale=True)
+        napari_layer = NapariImageLayer(name=self.name, data=data, multiscale=True)
+        return napari_layer
 
     def save(self) -> None:
         raise NotImplementedError()  # TODO
@@ -59,7 +60,8 @@ class OMEZarrLabelsLayer(OMEZarrLayer):
             label_multiscales.array(resolution, "")
             for resolution in label_multiscales.datasets
         ]  # TODO version
-        return NapariLabelsLayer(name=self.name, data=data, multiscale=True)
+        napari_layer = NapariLabelsLayer(name=self.name, data=data, multiscale=True)
+        return napari_layer
 
     def save(self) -> None:
         raise NotImplementedError()  # TODO

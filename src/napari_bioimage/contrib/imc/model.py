@@ -26,9 +26,10 @@ class IMCPanoramaLayer(IMCLayer):
                 if panorama.id == self.panorama_id
             )
             data = f.read_panorama(panorama)
-        return NapariImageLayer(
+        napari_layer = NapariImageLayer(
             name=self.name, data=data
         )  # TODO scale/translation/rotation
+        return napari_layer
 
 
 class IMCAcquisitionLayer(IMCLayer):
@@ -45,6 +46,7 @@ class IMCAcquisitionLayer(IMCLayer):
             )
             data = f.read_acquisition(acquisition)[self.channel_index]
         # TODO read acquisition from TXT if reading from MCD fails
-        return NapariImageLayer(
+        napari_layer = NapariImageLayer(
             name=self.name, data=data
         )  # TODO scale/translation/rotation
+        return napari_layer

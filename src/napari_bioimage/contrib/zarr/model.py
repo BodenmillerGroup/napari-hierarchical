@@ -18,7 +18,8 @@ class ZarrLayer(Layer):
     def load(self) -> NapariLayer:
         z = zarr.open(store=self.zarr_file, mode="r")
         data = da.from_zarr(z[self.path])
-        return NapariImageLayer(name=self.name, data=data)
+        napari_layer = NapariImageLayer(name=self.name, data=data)
+        return napari_layer
 
     def save(self) -> None:
         raise NotImplementedError()  # TODO

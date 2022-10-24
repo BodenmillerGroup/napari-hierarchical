@@ -18,7 +18,8 @@ class HDF5Layer(Layer):
     def load(self) -> NapariLayer:
         with h5py.File(self.hdf5_file) as f:
             data = da.from_array(f[self.path])
-        return NapariImageLayer(name=self.name, data=data)
+        napari_layer = NapariImageLayer(name=self.name, data=data)
+        return napari_layer
 
     def save(self) -> None:
         raise NotImplementedError()  # TODO

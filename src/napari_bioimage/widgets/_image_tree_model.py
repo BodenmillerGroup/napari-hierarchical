@@ -26,14 +26,20 @@ class QImageTreeModel(QAbstractItemModel):
         self._orphan_images: List[Image] = []
         self._pending_drop_actions: List[Callable[[], None]] = []
         self._remaining_removes_before_drop = 0
+        self._connect_events()
+
+    def _connect_events(self) -> None:
         self._controller.images.events.connect(self._on_images_changed)
         for image in self._controller.images:
             self._connect_image(image)
 
-    def __del__(self) -> None:
+    def _disconnect_events(self) -> None:
         for image in self._controller.images:
             self._disconnect_image(image)
         self._controller.images.events.disconnect(self._on_images_changed)
+
+    def __del__(self) -> None:
+        self._disconnect_events()
 
     def index(
         self, row: int, column: int, parent: QModelIndex = QModelIndex()
@@ -152,7 +158,7 @@ class QImageTreeModel(QAbstractItemModel):
                 # prevent Python from garbage-collecting objects that are referenced by
                 # existing QModelIndex instances, but release as much memory as possible
                 self._orphan_images.append(image)
-                image.delete()
+                image.free_memory()
             # finish drag and drop action
             if self._remaining_removes_before_drop > 0:
                 self._remaining_removes_before_drop -= count

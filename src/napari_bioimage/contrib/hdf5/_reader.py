@@ -14,7 +14,8 @@ PathLike = Union[str, os.PathLike]
 
 def read_hdf5(path: PathLike) -> Image:
     with h5py.File(path) as f:
-        return _create_group_image(Path(path).name, f)
+        image = _create_group_image(Path(path).name, f)
+    return image
 
 
 def _create_group_image(

@@ -65,9 +65,9 @@ def _get_image_layers(
                 channel_index=channel_index,
             )
             if channel_names is not None and len(channel_names) == num_channels:
-                image_layer.metadata["Channel"] = channel_names[channel_index]
+                image_layer.groups["Channel"] = channel_names[channel_index]
             else:
-                image_layer.metadata["Channel"] = f"Channel {channel_index}"
+                image_layer.groups["Channel"] = f"Channel {channel_index}"
             yield image_layer
     else:
         image_layer = OMEZarrImageLayer(
@@ -93,5 +93,5 @@ def _get_labels_layers(
                     ome_zarr_file=str(path),
                     label_name=label_name,
                 )
-                labels_layer.metadata["Label"] = label_name
+                labels_layer.groups["Label"] = label_name
                 yield labels_layer

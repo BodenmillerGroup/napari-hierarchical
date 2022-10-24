@@ -59,7 +59,7 @@ def read_imc(path: PathLike) -> Image:
                         acquisition_id=acquisition.id,
                         channel_index=channel_index,
                     )
-                    acquisition_layer.metadata[
+                    acquisition_layer.groups[
                         "Channel"
                     ] = f"[C{channel_index:02d}] {channel_name} {channel_label}"
                     acquisition_image.layers.append(acquisition_layer)

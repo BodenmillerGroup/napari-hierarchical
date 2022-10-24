@@ -38,19 +38,21 @@ def make_zarr_sample_data():
     from ..contrib import ome_zarr
 
     orig_ome_zarr_available = ome_zarr.available
+    ome_zarr.available = False
     try:
-        ome_zarr.available = False
-        return make_sample_data()
+        sample_data = make_sample_data()
     finally:
         ome_zarr.available = orig_ome_zarr_available
+    return sample_data
 
 
 def make_ome_zarr_sample_data():
     from ..contrib import zarr
 
     orig_zarr_available = zarr.available
+    zarr.available = False
     try:
-        zarr.available = False
-        return make_sample_data()
+        sample_data = make_sample_data()
     finally:
         zarr.available = orig_zarr_available
+    return sample_data

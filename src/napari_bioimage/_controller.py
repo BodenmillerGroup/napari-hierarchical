@@ -7,7 +7,7 @@ from pluggy import PluginManager
 
 from . import hookspecs
 from ._exceptions import BioImageException
-from .model import Image
+from .model import Image, Layer
 
 if TYPE_CHECKING:
     from .widgets import QBioImageWidget
@@ -25,6 +25,9 @@ class BioImageController:
         self._images: EventedList[Image] = EventedList(
             basetype=Image, lookup={str: lambda image: image.name}
         )
+        self._layers: EventedList[Layer] = EventedList(
+            basetype=Layer, lookup={str: lambda layer: layer.name}
+        )
 
     def _get_reader_function(
         self, path: PathLike
@@ -41,10 +44,12 @@ class BioImageController:
         return writer_function
 
     def can_read(self, path: PathLike) -> bool:
-        return self._get_reader_function(path) is not None
+        reader_function = self._get_reader_function(path)
+        return reader_function is not None
 
     def can_write(self, path: PathLike, image: Image) -> bool:
-        return self._get_writer_function(path, image) is not None
+        writer_function = self._get_writer_function(path, image)
+        return writer_function is not None
 
     def read(self, path: PathLike) -> Image:
         reader_function = self._get_reader_function(path)
@@ -54,7 +59,9 @@ class BioImageController:
             image = reader_function(path)
         except Exception as e:
             raise BioImageControllerException(e)
+        layers = image.get_layers(recursive=True)
         self._images.append(image)
+        self._layers += layers
         return image
 
     def write(self, path: PathLike, image: Image) -> None:
@@ -89,6 +96,10 @@ class BioImageController:
     @property
     def images(self) -> EventedList[Image]:
         return self._images
+
+    @property
+    def layers(self) -> EventedList[Layer]:
+        return self._layers
 
 
 class BioImageControllerException(BioImageException):

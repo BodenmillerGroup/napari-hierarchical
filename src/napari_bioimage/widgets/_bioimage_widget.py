@@ -6,8 +6,7 @@ from qtpy.QtWidgets import QSplitter, QVBoxLayout, QWidget
 
 from .._controller import controller
 from ._image_tree_widget import QImageTreeWidget
-from ._layer_groups_widget import QLayerGroupsWidget
-from ._layer_properties_widget import QLayerPropertiesWidget
+from ._layer_groupings_widget import QLayerGroupingsWidget
 
 
 class QBioImageWidget(QWidget):
@@ -22,15 +21,14 @@ class QBioImageWidget(QWidget):
             controller.register_viewer(napari_viewer)
         controller.register_widget(self)
         self._image_tree_widget = QImageTreeWidget(controller)
-        self._layer_groups_widget = QLayerGroupsWidget(controller)
-        self._layer_properties_widget = QLayerPropertiesWidget(controller)
-        self.setupUI()
+        self._layer_groupings_widget = QLayerGroupingsWidget(controller)
+        self._setup_user_interface()
 
-    def setupUI(self) -> None:
+    def _setup_user_interface(self) -> None:
+        # TODO use separate napari dock widgets instead?
         layout = QVBoxLayout()
         splitter = QSplitter(orientation=Qt.Orientation.Vertical)
         splitter.addWidget(self._image_tree_widget)
-        splitter.addWidget(self._layer_groups_widget)
-        splitter.addWidget(self._layer_properties_widget)
+        splitter.addWidget(self._layer_groupings_widget)
         layout.addWidget(splitter)
         self.setLayout(layout)

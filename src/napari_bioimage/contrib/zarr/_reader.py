@@ -22,10 +22,12 @@ def read_zarr(path: PathLike) -> Image:
     z = zarr.open(store=path, mode="r")
     name = str(Path(path).relative_to(zarr_file.parent))
     if isinstance(z, zarr.Group):
-        return _create_group_image(name, z)
-    if isinstance(z, zarr.Array):
-        return _create_array_image(name, z)
-    raise TypeError(f"Unsupported zarr type: {type(z)}")
+        image = _create_group_image(name, z)
+    elif isinstance(z, zarr.Array):
+        image = _create_array_image(name, z)
+    else:
+        raise TypeError(f"Unsupported zarr type: {type(z)}")
+    return image
 
 
 def _create_group_image(
