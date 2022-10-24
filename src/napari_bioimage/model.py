@@ -22,7 +22,7 @@ class Layer(EventedModel):
     def save(self) -> None:
         raise NotImplementedError(f"{self} cannot be saved")
 
-    def deepcopy(self, image: Optional["Image"] = None) -> "Layer":
+    def to_layer(self, image: Optional["Image"] = None) -> "Layer":
         new_layer = Layer(name=self.name, image=image, layer=self.layer)
         new_layer.metadata.update(self.metadata)
         return new_layer
@@ -49,21 +49,32 @@ class Image(EventedModel):
     # https://napari.zulipchat.com/#narrow/stream/212875-general/topic/.E2.9C.94.20model.20events.20propagation
     _children_callback: Optional[Callable] = None
 
-    def deepcopy(self, parent: Optional["Image"] = None) -> "Image":
+    _deleted: bool = False
+
+    def to_image(self, parent: Optional["Image"] = None) -> "Image":
+        assert not self._deleted
         new_image = Image(name=self.name, parent=parent)
         for child_image in self.children:
-            new_child_image = child_image.deepcopy(parent=new_image)
+            new_child_image = child_image.to_image(parent=new_image)
             new_image.children.append(new_child_image)
         for layer in self.layers:
-            new_layer = layer.deepcopy(image=new_image)
+            new_layer = layer.to_layer(image=new_image)
             new_image.layers.append(new_layer)
         return new_image
 
     def collect_layers(self) -> Sequence[Layer]:
+        assert not self._deleted
         layers = list(self.layers)
         for child_image in self.children:
             layers += child_image.collect_layers()
         return layers
+
+    def delete(self) -> None:
+        assert not self._deleted
+        for child_image in self.children:
+            child_image.delete()
+        self.layers.clear()
+        self._deleted = True
 
 
 Layer.update_forward_refs(Image=Image)

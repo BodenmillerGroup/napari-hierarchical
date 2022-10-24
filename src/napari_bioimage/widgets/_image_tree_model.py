@@ -1,5 +1,5 @@
 import pickle
-from typing import Any, Iterable, List, NamedTuple, Optional, Sequence
+from typing import Any, Callable, Iterable, List, NamedTuple, Optional, Sequence
 
 from napari.utils.events import Event
 from qtpy.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QObject, Qt
@@ -23,6 +23,9 @@ class QImageTreeModel(QAbstractItemModel):
     ) -> None:
         super().__init__(parent)
         self._controller = controller
+        self._orphan_images: List[Image] = []
+        self._pending_drop_actions: List[Callable[[], None]] = []
+        self._remaining_removes_before_drop = 0
         self._controller.images.events.connect(self._on_images_changed)
         for image in self._controller.images:
             self._connect_image(image)
@@ -144,7 +147,20 @@ class QImageTreeModel(QAbstractItemModel):
         else:
             images = self._controller.images
         if 0 <= row < row + count <= len(images) and count > 0:
-            del images[row : row + count]
+            for _ in range(count):
+                image = images.pop(row)
+                # prevent the Python garbage collector from destroying objects that may
+                # still be referenced by existing QModelIndex instances, but release as
+                # much memory as possible
+                self._orphan_images.append(image)
+                image.delete()
+            # finish drag and drop action
+            if self._remaining_removes_before_drop > 0:
+                self._remaining_removes_before_drop -= count
+                if self._remaining_removes_before_drop == 0:
+                    while len(self._pending_drop_actions) > 0:
+                        drop_action = self._pending_drop_actions.pop(0)
+                        drop_action()
             return True
         return False
 
@@ -182,7 +198,19 @@ class QImageTreeModel(QAbstractItemModel):
         ):
             indices_stacks = pickle.loads(data.data("x-napari-bioimage").data())
             assert isinstance(indices_stacks, list) and len(indices_stacks) > 0
-            for i, indices_stack in enumerate(indices_stacks):
+            if parent.isValid():
+                parent_image = parent.internalPointer()
+                assert isinstance(parent_image, Image)
+                images = parent_image.children
+            else:
+                parent_image = None
+                images = self._controller.images
+            if row == -1 and column == -1:
+                row = len(images)
+            assert 0 <= row <= len(images)
+            n = 0
+            while len(indices_stacks) > 0:
+                indices_stack = indices_stacks.pop(0)
                 assert isinstance(indices_stack, list) and len(indices_stack) > 0
                 source_images = self._controller.images
                 source_row = indices_stack.pop()
@@ -191,23 +219,13 @@ class QImageTreeModel(QAbstractItemModel):
                     source_images = source_images[source_row].children
                     source_row = indices_stack.pop()
                     assert isinstance(source_row, int)
-                source_image = source_images[source_row]
-                if parent.isValid():
-                    parent_image = parent.internalPointer()
-                    assert isinstance(parent_image, Image)
-                    images = parent_image.children
-                else:
-                    parent_image = None
-                    images = self._controller.images
-                image = source_image.deepcopy(parent=parent_image)
-                if row >= 0 and column >= 0:
-                    assert 0 <= row + i <= len(images)
-                    assert 0 <= column < len(self.COLUMNS)
-                    images.insert(row + i, image)
-                else:
-                    assert row == -1
-                    assert column == -1
-                    images.insert(len(images), image)
+                index = row + n
+                if images == source_images and index > source_row:
+                    index -= 1
+                image = source_images[source_row].to_image(parent=parent_image)
+                self._pending_drop_actions.append(lambda: images.insert(index, image))
+                self._remaining_removes_before_drop += 1
+                n += 1
             return True
         return False
 
@@ -216,7 +234,6 @@ class QImageTreeModel(QAbstractItemModel):
     ) -> None:
         if not isinstance(event.sources[0], Sequence):
             return
-        print("images:", event.type)
 
         def get_parent():
             if parent_image is not None:
@@ -273,7 +290,6 @@ class QImageTreeModel(QAbstractItemModel):
     def _on_image_changed(self, event: Event) -> None:
         if not isinstance(event.sources[0], Image):
             return
-        print("image:", event.type)
         image = event.source
         assert isinstance(image, Image)
         column_index = next(
