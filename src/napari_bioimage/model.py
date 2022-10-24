@@ -68,7 +68,7 @@ class Image(EventedModel):
     _children_callback: Optional[Callable] = None
 
     # QModelIndex may point to instances that have been garbage-collected by Python
-    # Workaround for QImageTreeModel: prevent Python from garbage-collecting objets by
+    # Workaround for QImageTreeModel: prevent Python from garbage-collecting objects by
     # retaining a reference indefinitely (but release as much memory as possible)
     _deleted: bool = False
 
