@@ -149,9 +149,8 @@ class QImageTreeModel(QAbstractItemModel):
         if 0 <= row < row + count <= len(images) and count > 0:
             for _ in range(count):
                 image = images.pop(row)
-                # prevent the Python garbage collector from destroying objects that may
-                # still be referenced by existing QModelIndex instances, but release as
-                # much memory as possible
+                # prevent Python from garbage-collecting objects that are referenced by
+                # existing QModelIndex instances, but release as much memory as possible
                 self._orphan_images.append(image)
                 image.delete()
             # finish drag and drop action

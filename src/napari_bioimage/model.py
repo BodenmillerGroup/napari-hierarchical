@@ -44,13 +44,6 @@ class Image(EventedModel):
         basetype=Layer, lookup={str: lambda layer: layer.name}
     )
 
-    # EventedList events are not propagated to "parent" EventedLists
-    # Workaround for QImageTreeModel: register a callback for each Image
-    # https://napari.zulipchat.com/#narrow/stream/212875-general/topic/.E2.9C.94.20model.20events.20propagation
-    _children_callback: Optional[Callable] = None
-
-    _deleted: bool = False
-
     def to_image(self, parent: Optional["Image"] = None) -> "Image":
         assert not self._deleted
         new_image = Image(name=self.name, parent=parent)
@@ -68,6 +61,16 @@ class Image(EventedModel):
         for child_image in self.children:
             layers += child_image.collect_layers()
         return layers
+
+    # EventedList events are not propagated to "parent" EventedLists
+    # Workaround for QImageTreeModel: register a callback for each Image
+    # https://napari.zulipchat.com/#narrow/stream/212875-general/topic/.E2.9C.94.20model.20events.20propagation
+    _children_callback: Optional[Callable] = None
+
+    # QModelIndex may point to instances that have been garbage-collected by Python
+    # Workaround for QImageTreeModel: prevent Python from garbage-collecting objets by
+    # retaining a reference indefinitely (but release as much memory as possible)
+    _deleted: bool = False
 
     def delete(self) -> None:
         assert not self._deleted
