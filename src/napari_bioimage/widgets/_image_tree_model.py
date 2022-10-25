@@ -28,16 +28,6 @@ class QImageTreeModel(QAbstractItemModel):
         self._remaining_removes_before_drop = 0
         self._connect_events()
 
-    def _connect_events(self) -> None:
-        self._controller.images.events.connect(self._on_images_changed)
-        for image in self._controller.images:
-            self._connect_image(image)
-
-    def _disconnect_events(self) -> None:
-        for image in self._controller.images:
-            self._disconnect_image(image)
-        self._controller.images.events.disconnect(self._on_images_changed)
-
     def __del__(self) -> None:
         self._disconnect_events()
 
@@ -78,30 +68,6 @@ class QImageTreeModel(QAbstractItemModel):
     def columnCount(self, index: QModelIndex = QModelIndex()) -> int:
         return len(self.COLUMNS)
 
-    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
-        flags = super().flags(index)
-        if index.isValid():
-            assert flags & Qt.ItemFlag.ItemIsEnabled
-            assert flags & Qt.ItemFlag.ItemIsSelectable
-            assert 0 <= index.column() < len(self.COLUMNS)
-            column = self.COLUMNS[index.column()]
-            if column.editable:
-                flags |= Qt.ItemFlag.ItemIsEditable
-            flags |= Qt.ItemFlag.ItemIsDragEnabled
-        flags |= Qt.ItemFlag.ItemIsDropEnabled
-        return flags
-
-    def headerData(
-        self,
-        section: int,
-        orientation: Qt.Orientation,
-        role: int = Qt.ItemDataRole.DisplayRole,
-    ) -> Any:
-        if role == Qt.ItemDataRole.DisplayRole and 0 <= section < len(self.COLUMNS):
-            column = self.COLUMNS[section]
-            return column.title
-        return None
-
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if index.isValid() and role in (
             Qt.ItemDataRole.DisplayRole,
@@ -125,6 +91,30 @@ class QImageTreeModel(QAbstractItemModel):
             setattr(image, column.field, value)
             return True
         return False
+
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+        flags = super().flags(index)
+        if index.isValid():
+            assert flags & Qt.ItemFlag.ItemIsEnabled
+            assert flags & Qt.ItemFlag.ItemIsSelectable
+            assert 0 <= index.column() < len(self.COLUMNS)
+            column = self.COLUMNS[index.column()]
+            if column.editable:
+                flags |= Qt.ItemFlag.ItemIsEditable
+            flags |= Qt.ItemFlag.ItemIsDragEnabled
+        flags |= Qt.ItemFlag.ItemIsDropEnabled
+        return flags
+
+    def headerData(
+        self,
+        section: int,
+        orientation: Qt.Orientation,
+        role: int = Qt.ItemDataRole.DisplayRole,
+    ) -> Any:
+        if role == Qt.ItemDataRole.DisplayRole and 0 <= section < len(self.COLUMNS):
+            column = self.COLUMNS[section]
+            return column.title
+        return None
 
     def insertRows(
         self, row: int, count: int, parent: QModelIndex = QModelIndex()
@@ -234,6 +224,33 @@ class QImageTreeModel(QAbstractItemModel):
             return True
         return False
 
+    def _connect_events(self) -> None:
+        self._controller.images.events.connect(self._on_images_changed)
+        for image in self._controller.images:
+            self._connect_image(image)
+
+    def _disconnect_events(self) -> None:
+        for image in self._controller.images:
+            self._disconnect_image(image)
+        self._controller.images.events.disconnect(self._on_images_changed)
+
+    def _connect_image(self, image: Image) -> None:
+        assert image._children_callback is None
+        image.events.connect(self._on_image_changed)
+        image._children_callback = image.children.events.connect(
+            lambda e: self._on_images_changed(e, parent_image=image)
+        )
+        for child_image in image.children:
+            self._connect_image(child_image)
+
+    def _disconnect_image(self, image: Image) -> None:
+        for child_image in image.children:
+            self._disconnect_image(child_image)
+        assert image._children_callback is not None
+        image.events.disconnect(self._on_image_changed)
+        image.children.events.disconnect(callback=image._children_callback)
+        image._children_callback = None
+
     def _on_images_changed(
         self, event: Event, parent_image: Optional[Image] = None
     ) -> None:
@@ -307,20 +324,3 @@ class QImageTreeModel(QAbstractItemModel):
                 row = self._controller.images.index(image)
             index = self.createIndex(row, column_index, object=image)
             self.dataChanged.emit(index, index)
-
-    def _connect_image(self, image: Image) -> None:
-        assert image._children_callback is None
-        image.events.connect(self._on_image_changed)
-        image._children_callback = image.children.events.connect(
-            lambda e: self._on_images_changed(e, parent_image=image)
-        )
-        for child_image in image.children:
-            self._connect_image(child_image)
-
-    def _disconnect_image(self, image: Image) -> None:
-        for child_image in image.children:
-            self._disconnect_image(child_image)
-        assert image._children_callback is not None
-        image.events.disconnect(self._on_image_changed)
-        image.children.events.disconnect(callback=image._children_callback)
-        image._children_callback = None

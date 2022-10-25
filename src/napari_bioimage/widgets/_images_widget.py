@@ -19,9 +19,9 @@ class QImagesWidget(QWidget):
         if controller.viewer != napari_viewer:
             controller.register_viewer(napari_viewer)
         self._image_tree_widget = QImageTreeWidget(controller)
-        self._setup_user_interface()
+        self._setup_ui()
 
-    def _setup_user_interface(self) -> None:
+    def _setup_ui(self) -> None:
         layout = QVBoxLayout()
         layout.addWidget(self._image_tree_widget)
         self.setLayout(layout)

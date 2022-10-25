@@ -19,9 +19,9 @@ class QImageTreeWidget(QWidget):
         self._image_tree_view = QTreeView()
         self._image_tree_model = QImageTreeModel(controller)
         self._image_tree_view.setModel(self._image_tree_model)
-        self._setup_user_interface()
+        self._setup_ui()
 
-    def _setup_user_interface(self) -> None:
+    def _setup_ui(self) -> None:
         layout = QVBoxLayout()
         self._image_tree_view.setHeaderHidden(True)
         self._image_tree_view.setSelectionMode(
