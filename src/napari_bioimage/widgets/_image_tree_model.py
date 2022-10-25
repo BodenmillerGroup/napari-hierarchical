@@ -227,27 +227,27 @@ class QImageTreeModel(QAbstractItemModel):
     def _connect_events(self) -> None:
         self._controller.images.events.connect(self._on_images_changed)
         for image in self._controller.images:
-            self._connect_image(image)
+            self._connect_image_events(image)
 
     def _disconnect_events(self) -> None:
         for image in self._controller.images:
-            self._disconnect_image(image)
+            self._disconnect_image_events(image)
         self._controller.images.events.disconnect(self._on_images_changed)
 
-    def _connect_image(self, image: Image) -> None:
-        assert image._children_callback is None
+    def _connect_image_events(self, image: Image) -> None:
         image.events.connect(self._on_image_changed)
+        assert image._children_callback is None
         image._children_callback = image.children.events.connect(
             lambda e: self._on_images_changed(e, parent_image=image)
         )
         for child_image in image.children:
-            self._connect_image(child_image)
+            self._connect_image_events(child_image)
 
-    def _disconnect_image(self, image: Image) -> None:
+    def _disconnect_image_events(self, image: Image) -> None:
         for child_image in image.children:
-            self._disconnect_image(child_image)
-        assert image._children_callback is not None
+            self._disconnect_image_events(child_image)
         image.events.disconnect(self._on_image_changed)
+        assert image._children_callback is not None
         image.children.events.disconnect(callback=image._children_callback)
         image._children_callback = None
 
@@ -274,14 +274,14 @@ class QImageTreeModel(QAbstractItemModel):
         elif event.type == "inserted":
             self.endInsertRows()
             assert isinstance(event.value, Image)
-            self._connect_image(event.value)
+            self._connect_image_events(event.value)
         elif event.type == "removing":
             assert isinstance(event.index, int) and 0 <= event.index < len(images)
             self.beginRemoveRows(get_parent(), event.index, event.index)
         elif event.type == "removed":
             self.endRemoveRows()
             assert isinstance(event.value, Image)
-            self._disconnect_image(event.value)
+            self._disconnect_image_events(event.value)
         elif event.type == "moving":
             assert isinstance(event.index, int) and 0 <= event.index < len(images)
             assert (
