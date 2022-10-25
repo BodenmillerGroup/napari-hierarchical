@@ -1,5 +1,5 @@
 import os
-from typing import TYPE_CHECKING, Optional, Union
+from typing import Optional, Union
 
 from napari.utils.events import EventedList
 from napari.viewer import Viewer
@@ -8,9 +8,6 @@ from pluggy import PluginManager
 from . import hookspecs
 from ._exceptions import BioImageException
 from .model import Image, Layer
-
-if TYPE_CHECKING:
-    from .widgets import QBioImageWidget
 
 PathLike = Union[str, os.PathLike]
 
@@ -21,7 +18,6 @@ class BioImageController:
         self._pm.add_hookspecs(hookspecs)
         self._pm.load_setuptools_entrypoints("napari-bioimage")
         self._viewer: Optional[Viewer] = None
-        self._widget: Optional["QBioImageWidget"] = None
         self._images: EventedList[Image] = EventedList(
             basetype=Image, lookup={str: lambda image: image.name}
         )
@@ -77,10 +73,6 @@ class BioImageController:
         assert self._viewer is None
         self._viewer = viewer
 
-    def register_widget(self, widget: "QBioImageWidget") -> None:
-        assert self._widget is None
-        self._widget = widget
-
     @property
     def pm(self) -> PluginManager:
         return self._pm
@@ -88,10 +80,6 @@ class BioImageController:
     @property
     def viewer(self) -> Optional[Viewer]:
         return self._viewer
-
-    @property
-    def widget(self) -> Optional["QBioImageWidget"]:
-        return self._widget
 
     @property
     def images(self) -> EventedList[Image]:

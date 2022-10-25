@@ -2,14 +2,13 @@ from typing import Optional, Union
 
 from napari.viewer import Viewer
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QSplitter, QVBoxLayout, QWidget
+from qtpy.QtWidgets import QVBoxLayout, QWidget
 
 from .._controller import controller
-from ._image_tree_widget import QImageTreeWidget
 from ._layer_groupings_widget import QLayerGroupingsWidget
 
 
-class QBioImageWidget(QWidget):
+class QLayersWidget(QWidget):
     def __init__(
         self,
         napari_viewer: Viewer,
@@ -19,16 +18,10 @@ class QBioImageWidget(QWidget):
         super().__init__(parent, flags)
         if controller.viewer != napari_viewer:
             controller.register_viewer(napari_viewer)
-        controller.register_widget(self)
-        self._image_tree_widget = QImageTreeWidget(controller)
         self._layer_groupings_widget = QLayerGroupingsWidget(controller)
         self._setup_user_interface()
 
     def _setup_user_interface(self) -> None:
-        # TODO use separate napari dock widgets instead?
         layout = QVBoxLayout()
-        splitter = QSplitter(orientation=Qt.Orientation.Vertical)
-        splitter.addWidget(self._image_tree_widget)
-        splitter.addWidget(self._layer_groupings_widget)
-        layout.addWidget(splitter)
+        layout.addWidget(self._layer_groupings_widget)
         self.setLayout(layout)

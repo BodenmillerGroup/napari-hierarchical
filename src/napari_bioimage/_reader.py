@@ -19,7 +19,6 @@ def _reader_function(path):
     assert viewer is not None
     if controller.viewer != viewer:
         controller.register_viewer(viewer)
-    if controller.widget is None:
-        _, widget = viewer.window.add_plugin_dock_widget("napari-bioimage")
-        assert controller.widget == widget
+    viewer.window.add_plugin_dock_widget("napari-bioimage", widget_name="images")
+    viewer.window.add_plugin_dock_widget("napari-bioimage", widget_name="layers")
     return [(None,)]

@@ -32,7 +32,7 @@ This plugin adds the following concepts to napari:
   - Layers may be moved from one image to another in memory by the user
 - Layers are *grouped* by layer metadata (flat groupings across all images, e.g. by channel/label label name)
   - Layer groupings are shown in the *Layers* panel, containing one tab for each metadata grouping (key)
-  - An additional grouping (tab) exists for Layer identity ("Layers" tab, cf. original napari Layers panel)
+  - An additional grouping (tab) exists for Layer identity ("Layer" tab, cf. original napari Layers panel)
   - Reading/writing a layer group means reading/writing all its layers
   - Selecting a layer group selects all its layers
 
@@ -50,9 +50,9 @@ To install latest development version :
 
 ## Implementation
 
-This plugin implements reader, writer, and widget functionality. The reader reads an image (not actual image data, see description above) and opens the `napari_bioimage.widget.QBioImageWidget` widget. The writer writes the selected layers (not the entire image, see description above). All operations are done through the `napari_bioimage.controller` singleton instance, which "extends" the functionality of `napari.viewer.Viewer`.
+This plugin implements reader, writer, and widget functionality. The reader reads an image (not actual image data, see description above) and opens the `QImagesWidget` and `QLayersWidget` widgets in `napari_bioimage.widgets`. The writer writes the selected layers (not the entire image, see description above). All operations are done through the `napari_bioimage.controller` singleton instance, which "extends" the functionality of `napari.viewer.Viewer`.
 
-Image readers/writers are implemented as plugins using [pluggy](https://pluggy.readthedocs.io), similar to the [first-generation napari plugin engine](https://github.com/napari/napari-plugin-engine). Out of the box, this plugin ships with readers/writers for HDF5, Zarr, OME-Zarr, and imaging mass cytometry (IMC) file formats, implemented in `napari_bioimage.contrib`. Additionally, the plugin supports "traditional" napari reader contributions.
+Image readers/writers are implemented as plugins using [pluggy](https://pluggy.readthedocs.io), similar to the [first-generation napari plugin engine](https://github.com/napari/napari-plugin-engine). Out of the box, this plugin ships with readers/writers for HDF5, Zarr, OME-Zarr, and imaging mass cytometry (IMC) file formats, implemented in `napari_bioimage.contrib`. Additionally, the plugin also provides sample data for these file formats.
 
 The hierarchical image/layer model (composite tree pattern) is implemented in `napari_bioimage.model`. For consistency with the original napari layer model, all model classes inherit from `napari.utils.events.EventedModel`. This renders the creation of lazy models (e.g. for representing the whole file system) impossible, which is intended. Despite implementing a composite tree pattern, the model classes do not inherit from `napari.utils.tree` to avoid problems due to multiple inheritance/pydantic.
 

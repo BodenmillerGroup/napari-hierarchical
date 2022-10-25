@@ -5,9 +5,12 @@ contributions:
     - id: napari-bioimage.get_reader
       python_name: napari_bioimage:napari_get_reader
       title: Open data with napari-bioimage
-    - id: napari-bioimage.make_widget
-      python_name: napari_bioimage.widgets:QBioImageWidget
-      title: Make napari-bioimage widget
+    - id: napari-bioimage.make_images_widget
+      python_name: napari_bioimage.widgets:QImagesWidget
+      title: Make napari-bioimage images widget
+    - id: napari-bioimage.make_layers_widget
+      python_name: napari_bioimage.widgets:QLayersWidget
+      title: Make napari-bioimage layers widget
     - id: napari-bioimage.sample_data.imc_mock
       python_name: napari_bioimage.sample_data.imc_mock:make_sample_data
       title: Make IMC mock sample data
@@ -25,8 +28,10 @@ contributions:
       accepts_directories: false
       filename_patterns: ['*']
   widgets:
-    - command: napari-bioimage.make_widget
+    - command: napari-bioimage.make_images_widget
       display_name: images
+    - command: napari-bioimage.make_layers_widget
+      display_name: layers
   sample_data:
     - key: imc_mock
       display_name: IMC mock dataset (Bodenmiller group, University of Zurich)

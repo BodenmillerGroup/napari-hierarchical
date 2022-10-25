@@ -28,9 +28,8 @@ def make_sample_data():
     assert viewer is not None
     if controller.viewer != viewer:
         controller.register_viewer(viewer)
-    if controller.widget is None:
-        _, widget = viewer.window.add_plugin_dock_widget("napari-bioimage")
-        assert controller.widget == widget
+    viewer.window.add_plugin_dock_widget("napari-bioimage", widget_name="images")
+    viewer.window.add_plugin_dock_widget("napari-bioimage", widget_name="layers")
     return []
 
 

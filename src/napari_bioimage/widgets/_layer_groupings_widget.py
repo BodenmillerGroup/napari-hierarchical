@@ -19,14 +19,18 @@ class QLayerGroupingsWidget(QWidget):
         super().__init__(parent, flags)
         self._controller = controller
         self._layer_groupings_tab_widget = QTabWidget()
+        self._layer_identity_grouping_widget = QLayerGroupingWidget()
         self._layer_grouping_widgets: Dict[str, QLayerGroupingWidget] = {}
+        self._setup_user_interface()
         for layer in controller.layers:
             self._register_layer(layer)
-        self._setup_user_interface()
         self._connect_events()
 
     def _setup_user_interface(self) -> None:
         layout = QVBoxLayout()
+        self._layer_groupings_tab_widget.addTab(
+            self._layer_identity_grouping_widget, "Layer"
+        )
         layout.addWidget(self._layer_groupings_tab_widget)
         self.setLayout(layout)
 
@@ -34,7 +38,7 @@ class QLayerGroupingsWidget(QWidget):
         for grouping in layer.groups.keys():
             layer_grouping_widget = self._layer_grouping_widgets.get(grouping)
             if layer_grouping_widget is None:
-                layer_grouping_widget = QLayerGroupingWidget(grouping)
+                layer_grouping_widget = QLayerGroupingWidget(grouping=grouping)
                 self._layer_grouping_widgets[grouping] = layer_grouping_widget
                 self._layer_groupings_tab_widget.addTab(layer_grouping_widget, grouping)
             layer_grouping_widget.add_layer(layer)
@@ -113,7 +117,7 @@ class QLayerGroupingsWidget(QWidget):
             if event.key in self._layer_grouping_widgets:
                 layer_grouping_widget = self._layer_grouping_widgets[event.key]
             else:
-                layer_grouping_widget = QLayerGroupingWidget(event.key)
+                layer_grouping_widget = QLayerGroupingWidget(grouping=event.key)
                 self._layer_grouping_widgets[event.key] = layer_grouping_widget
                 self._layer_groupings_tab_widget.addTab(
                     layer_grouping_widget, event.key
