@@ -56,7 +56,7 @@ Image readers/writers are implemented as plugins using [pluggy](https://pluggy.r
 
 The hierarchical image/layer model (composite tree pattern) is implemented in `napari_bioimage.model`. For consistency with the original napari layer model, all model classes inherit from `napari.utils.events.EventedModel`. This renders the creation of lazy models (e.g. for representing the whole file system) impossible, which is intended. Despite implementing a composite tree pattern, the model classes do not inherit from `napari.utils.tree` to avoid problems due to multiple inheritance/pydantic.
 
-The Qt tree model is implemented in `napari_bioimage.widgets.QImageTreeModel`. For listening to model changes, due to [problems with propagating events in nested EventedModel/EventedList hierarchies](https://napari.zulipchat.com/#narrow/stream/212875-general/topic/.E2.9C.94.20model.20events.20propagation), individual event handlers need to be registered for each ImageGroup instance. Until this issue gets resolved, as a workaround, the callback references are stored directly in `napari_bioimage.model.ImageGroup`.
+The Qt tree model is implemented in `napari_bioimage.widgets.QImageTreeModel`. For listening to model changes, due to [problems with propagating events in nested EventedModel/EventedList hierarchies](https://napari.zulipchat.com/#narrow/stream/212875-general/topic/.E2.9C.94.20model.20events.20propagation), individual event handlers need to be registered for each ImageGroup instance.
 
 ## Contributing
 

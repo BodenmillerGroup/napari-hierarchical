@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Sequence
+from typing import Optional, Sequence
 
 from napari.layers import Layer as NapariLayer
 from napari.utils.events import EventedModel
@@ -11,7 +11,13 @@ class Layer(EventedModel):
     name: str
     image: "Image"
     layer: Optional[NapariLayer] = None
-    groups: EventedDict[str, str] = EventedDict()  # grouping --> group
+    groups: "EventedLayerGroupsDict" = Field(
+        default_factory=lambda: EventedLayerGroupsDict()
+    )  # grouping --> group
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.groups._layer = self
 
     def load(self) -> NapariLayer:
         if self.layer is None:
@@ -30,9 +36,6 @@ class Layer(EventedModel):
     def loaded(self) -> bool:
         return self.layer is not None
 
-    # Workaround for QLayerGroupsWidget
-    _groups_callback: Optional[Callable] = None
-
     # QModelIndex may point to instances that have been garbage-collected by Python
     # Workaround for QImageTreeModel: prevent Python from garbage-collecting objects by
     # retaining a reference indefinitely (but release as much memory as possible)
@@ -41,17 +44,31 @@ class Layer(EventedModel):
         self.groups.clear()
 
 
+class EventedLayerGroupsDict(EventedDict[str, str]):
+    def __init__(self):
+        super().__init__(basetype=str)
+        self._layer: Optional[Layer] = None
+
+    @property
+    def layer(self) -> Layer:
+        assert self._layer is not None
+        return self._layer
+
+
 class Image(EventedModel):
     name: str
     parent: Optional["Image"] = None
-    children: EventedList["Image"] = Field(
-        default_factory=lambda: EventedList(
-            basetype=Image, lookup={str: lambda image: image.name}
-        )
+    children: "EventedImageChildrenList" = Field(
+        default_factory=lambda: EventedImageChildrenList()
     )
-    layers: EventedList[Layer] = EventedList(
-        basetype=Layer, lookup={str: lambda layer: layer.name}
+    layers: "EventedImageLayersList" = Field(
+        default_factory=lambda: EventedImageLayersList()
     )
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.children._image = self
+        self.layers._image = self
 
     def to_image(self, parent: Optional["Image"] = None) -> "Image":
         new_image = Image(name=self.name, parent=parent)
@@ -70,11 +87,6 @@ class Image(EventedModel):
                 layers += child_image.get_layers(recursive=True)
         return layers
 
-    # EventedList events are not propagated to "parent" EventedLists
-    # Workaround for QImageTreeModel: register a callback for each Image
-    # https://napari.zulipchat.com/#narrow/stream/212875-general/topic/.E2.9C.94.20model.20events.20propagation
-    _children_callback: Optional[Callable] = None
-
     # QModelIndex may point to instances that have been garbage-collected by Python
     # Workaround for QImageTreeModel: prevent Python from garbage-collecting objects by
     # retaining a reference indefinitely (but release as much memory as possible)
@@ -85,4 +97,31 @@ class Image(EventedModel):
             layer.free_memory()
 
 
-Layer.update_forward_refs(Image=Image)
+class EventedImageChildrenList(EventedList[Image]):
+    def __init__(self):
+        super().__init__(basetype=Image, lookup={str: lambda image: image.name})
+        self._image: Optional[Image] = None
+
+    @property
+    def image(self) -> Image:
+        assert self._image is not None
+        return self._image
+
+
+class EventedImageLayersList(EventedList[Layer]):
+    def __init__(self) -> None:
+        super().__init__(basetype=Layer, lookup={str: lambda layer: layer.name})
+        self._image: Optional[Image] = None
+
+    @property
+    def image(self) -> Image:
+        assert self._image is not None
+        return self._image
+
+
+Image.update_forward_refs(
+    EventedImageChildrenList=EventedImageChildrenList,
+    EventedImageLayersList=EventedImageLayersList,
+)
+
+Layer.update_forward_refs(Image=Image, EventedLayerGroupsDict=EventedLayerGroupsDict)

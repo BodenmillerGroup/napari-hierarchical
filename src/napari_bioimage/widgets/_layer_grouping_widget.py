@@ -1,27 +1,32 @@
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QWidget
+from qtpy.QtWidgets import QListView, QVBoxLayout, QWidget
 
-from ..model import Layer
+from napari_bioimage import BioImageController
+
+from ._layer_grouping_model import QLayerGroupingModel
 
 
 class QLayerGroupingWidget(QWidget):
     def __init__(
         self,
-        grouping: Optional[str] = None,
+        controller: BioImageController,
+        grouping: str,
+        close_callback: Callable[["QLayerGroupingWidget"], None],
         parent: Optional[QWidget] = None,
         flags: Union[Qt.WindowFlags, Qt.WindowType] = Qt.WindowFlags(),
     ) -> None:
         super().__init__(parent, flags)
-        self._grouping = grouping
+        self._controller = controller
+        self._layer_grouping_view = QListView()
+        self._layer_grouping_model = QLayerGroupingModel(
+            controller, grouping, lambda: close_callback(self)
+        )
+        self._layer_grouping_view.setModel(self._layer_grouping_model)
         self._setup_ui()
 
-    def add_layer(self, layer: Layer) -> None:
-        pass  # TODO
-
-    def remove_layer(self, layer: Layer) -> None:
-        pass  # TODO
-
     def _setup_ui(self) -> None:
-        pass  # TODO
+        layout = QVBoxLayout()
+        layout.addWidget(self._layer_grouping_view)
+        self.setLayout(layout)

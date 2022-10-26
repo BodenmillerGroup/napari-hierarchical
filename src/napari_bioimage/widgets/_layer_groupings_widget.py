@@ -1,4 +1,4 @@
-from typing import Dict, List, Mapping, Optional, Sequence, Union
+from typing import Dict, List, Optional, Union
 
 from napari.utils.events import Event
 from qtpy.QtCore import Qt
@@ -19,14 +19,10 @@ class QLayerGroupingsWidget(QWidget):
         super().__init__(parent, flags)
         self._controller = controller
         self._layer_groupings_tab_widget = QTabWidget()
-        self._layer_identity_grouping_widget = QLayerGroupingWidget()
         self._layer_grouping_widgets: Dict[str, QLayerGroupingWidget] = {}
         self._setup_ui()
-        self._layer_groupings_tab_widget.addTab(
-            self._layer_identity_grouping_widget, "Layer"
-        )
         for layer in controller.layers:
-            self._add_layer(layer)
+            self._register_layer(layer)
         self._connect_events()
 
     def __del__(self) -> None:
@@ -38,83 +34,37 @@ class QLayerGroupingsWidget(QWidget):
         self.setLayout(layout)
 
     def _connect_events(self) -> None:
-        self._controller.layers.events.connect(self._on_layers_changed)
-        for layer in self._controller.layers:
-            self._connect_layer_events(layer)
+        self._controller.layers.events.inserted.connect(self._on_layers_inserted_event)
+        self._controller.layers.events.changed.connect(self._on_layers_changed_event)
 
     def _disconnect_events(self) -> None:
-        for layer in self._controller.layers:
-            self._disconnect_layer_events(layer)
-        self._controller.layers.events.disconnect(self._on_layers_changed)
-
-    def _connect_layer_events(self, layer: Layer) -> None:
-        layer.events.connect(self._on_layer_changed)
-        assert layer._groups_callback is None
-        layer._groups_callback = layer.groups.events.connect(
-            lambda event: self._on_layer_groups_changed(event, layer)
+        self._controller.layers.events.changed.disconnect(self._on_layers_changed_event)
+        self._controller.layers.events.inserted.disconnect(
+            self._on_layers_inserted_event
         )
 
-    def _disconnect_layer_events(self, layer: Layer) -> None:
-        layer.events.disconnect(self._on_layer_changed)
-        assert layer._groups_callback is not None
-        layer.groups.events.disconnect(layer._groups_callback)
-        layer._groups_callback = None
+    def _on_layers_inserted_event(self, event: Event) -> None:
+        assert isinstance(event.value, Layer)
+        self._register_layer(event.value)
 
-    def _on_layers_changed(self, event: Event) -> None:
-        if not isinstance(event.sources[0], Sequence):
-            return
-        layers = event.source
-        assert isinstance(layers, Sequence)
-        if event.type == "inserted":
-            assert isinstance(event.value, Layer)
-            self._add_layer(event.value)
-            self._connect_layer_events(event.value)
-        elif event.type == "removed":
-            assert isinstance(event.value, Layer)
-            self._disconnect_layer_events(event.value)
-            self._remove_layer(event.value)
-        elif event.type == "changed" and isinstance(event.index, int):
-            assert isinstance(event.old_value, Layer)
-            self._disconnect_layer_events(event.old_value)
-            self._remove_layer(event.old_value)
-            assert isinstance(event.value, Layer)
-            self._add_layer(event.value)
-            self._connect_layer_events(event.value)
-        elif event.type == "changed" and isinstance(event.index, slice):
-            assert isinstance(event.old_value, List)
-            for old_layer in event.old_value:
-                assert isinstance(old_layer, Layer)
-                self._disconnect_layer_events(old_layer)
-                self._remove_layer(old_layer)
+    def _on_layers_changed_event(self, event: Event) -> None:
+        if isinstance(event.value, Layer):
+            self._register_layer(event.value)
+        else:
             assert isinstance(event.value, List)
             for layer in event.value:
                 assert isinstance(layer, Layer)
-                self._add_layer(layer)
-                self._connect_layer_events(layer)
+                self._register_layer(layer)
 
-    def _on_layer_changed(self, event: Event) -> None:
-        pass  # TODO
+    def _on_close_requested(self, layer_grouping_widget: QLayerGroupingWidget) -> None:
+        tab_index = self._layer_groupings_tab_widget.indexOf(layer_grouping_widget)
+        self._layer_groupings_tab_widget.removeTab(tab_index)
 
-    def _on_layer_groups_changed(self, event: Event, layer: Layer) -> None:
-        if not isinstance(event.sources[0], Mapping):
-            return
-        pass  # TODO
-
-    def _add_layer(self, layer: Layer) -> None:
-        self._layer_identity_grouping_widget.add_layer(layer)
+    def _register_layer(self, layer: Layer) -> None:
         for grouping in layer.groups.keys():
-            layer_grouping_widget = self._layer_grouping_widgets.get(grouping)
-            if layer_grouping_widget is None:
-                layer_grouping_widget = QLayerGroupingWidget(grouping=grouping)
-                self._layer_grouping_widgets[grouping] = layer_grouping_widget
+            if grouping not in self._layer_grouping_widgets:
+                layer_grouping_widget = QLayerGroupingWidget(
+                    self._controller, grouping, self._on_close_requested
+                )
                 self._layer_groupings_tab_widget.addTab(layer_grouping_widget, grouping)
-            layer_grouping_widget.add_layer(layer)
-
-    def _remove_layer(self, layer: Layer) -> None:
-        self._layer_identity_grouping_widget.remove_layer(layer)
-        for grouping in layer.groups.keys():
-            layer_grouping_widget = self._layer_grouping_widgets[grouping]
-            layer_grouping_widget.remove_layer(layer)
-            if len(layer_grouping_widget.group_layers) == 0:
-                index = self._layer_groupings_tab_widget.indexOf(layer_grouping_widget)
-                self._layer_groupings_tab_widget.removeTab(index)
+                self._layer_grouping_widgets[grouping] = layer_grouping_widget

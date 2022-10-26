@@ -1,11 +1,11 @@
 import pickle
-from typing import Any, Callable, Iterable, List, NamedTuple, Optional, Sequence
+from typing import Any, Callable, Iterable, List, NamedTuple, Optional
 
-from napari.utils.events import Event
+from napari.utils.events import Event, EventedList
 from qtpy.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QObject, Qt
 
 from .._controller import BioImageController
-from ..model import Image
+from ..model import EventedImageChildrenList, Image
 
 
 class QImageTreeModel(QAbstractItemModel):
@@ -225,68 +225,67 @@ class QImageTreeModel(QAbstractItemModel):
         return False
 
     def _connect_events(self) -> None:
-        self._controller.images.events.connect(self._on_images_changed)
         for image in self._controller.images:
             self._connect_image_events(image)
+        self._controller.images.events.connect(self._on_images_event)
 
     def _disconnect_events(self) -> None:
+        self._controller.images.events.disconnect(self._on_images_event)
         for image in self._controller.images:
             self._disconnect_image_events(image)
-        self._controller.images.events.disconnect(self._on_images_changed)
 
     def _connect_image_events(self, image: Image) -> None:
-        image.events.connect(self._on_image_changed)
-        assert image._children_callback is None
-        image._children_callback = image.children.events.connect(
-            lambda e: self._on_images_changed(e, parent_image=image)
-        )
         for child_image in image.children:
             self._connect_image_events(child_image)
+        image.children.events.connect(self._on_images_event)
+        image.events.connect(self._on_image_event)
 
     def _disconnect_image_events(self, image: Image) -> None:
+        image.events.disconnect(self._on_image_event)
+        image.children.events.disconnect(self._on_images_event)
         for child_image in image.children:
             self._disconnect_image_events(child_image)
-        image.events.disconnect(self._on_image_changed)
-        assert image._children_callback is not None
-        image.children.events.disconnect(callback=image._children_callback)
-        image._children_callback = None
 
-    def _on_images_changed(
-        self, event: Event, parent_image: Optional[Image] = None
-    ) -> None:
-        if not isinstance(event.sources[0], Sequence):
+    def _on_images_event(self, event: Event) -> None:
+        if not isinstance(event.sources[0], EventedList):
             return
+        assert isinstance(event.source, EventedList)
+        if isinstance(event.source, EventedImageChildrenList):
+            image = event.source.image
+            child_images = image.children
+        else:
+            image = None
+            child_images = self._controller.images
 
         def get_parent():
-            if parent_image is not None:
-                if parent_image.parent is not None:
-                    parent_row = parent_image.parent.children.index(parent_image)
+            if image is not None:
+                if image.parent is not None:
+                    parent_row = image.parent.children.index(image)
                 else:
-                    parent_row = self._controller.images.index(parent_image)
-                return self.createIndex(parent_row, 0, object=parent_image)
+                    parent_row = self._controller.images.index(image)
+                return self.createIndex(parent_row, 0, object=image)
             return QModelIndex()
 
-        images = event.source
-        assert isinstance(images, Sequence)
         if event.type == "inserting":
-            assert isinstance(event.index, int) and 0 <= event.index <= len(images)
+            assert isinstance(event.index, int) and 0 <= event.index <= len(
+                child_images
+            )
             self.beginInsertRows(get_parent(), event.index, event.index)
         elif event.type == "inserted":
             self.endInsertRows()
             assert isinstance(event.value, Image)
             self._connect_image_events(event.value)
         elif event.type == "removing":
-            assert isinstance(event.index, int) and 0 <= event.index < len(images)
+            assert isinstance(event.index, int) and 0 <= event.index < len(child_images)
+            self._disconnect_image_events(child_images[event.index])
             self.beginRemoveRows(get_parent(), event.index, event.index)
         elif event.type == "removed":
             self.endRemoveRows()
-            assert isinstance(event.value, Image)
-            self._disconnect_image_events(event.value)
         elif event.type == "moving":
-            assert isinstance(event.index, int) and 0 <= event.index < len(images)
+            assert isinstance(event.index, int) and 0 <= event.index < len(child_images)
             assert (
                 isinstance(event.new_index, int)
-                and 0 <= event.new_index <= len(images)
+                and 0 <= event.new_index <= len(child_images)
                 and event.new_index != event.index
             )
             parent = get_parent()
@@ -296,22 +295,22 @@ class QImageTreeModel(QAbstractItemModel):
         elif event.type == "moved":
             self.endMoveRows()
         elif event.type == "changed" and isinstance(event.index, int):
-            assert 0 <= event.index < len(images)
-            left_index = self.createIndex(event.index, 0, object=images[event.index])
+            assert 0 <= event.index < len(child_images)
+            left_index = self.createIndex(
+                event.index, 0, object=child_images[event.index]
+            )
             right_index = self.createIndex(
-                event.index, len(self.COLUMNS) - 1, object=images[event.index]
+                event.index, len(self.COLUMNS) - 1, object=child_images[event.index]
             )
             self.dataChanged.emit(left_index, right_index)
         elif event.type in ("changed", "reordered"):
-            top_left_index = self.createIndex(0, 0, object=images[0])
+            top_left_index = self.createIndex(0, 0, object=child_images[0])
             bottom_right_index = self.createIndex(
-                len(images) - 1, len(self.COLUMNS) - 1, object=images[-1]
+                len(child_images) - 1, len(self.COLUMNS) - 1, object=child_images[-1]
             )
             self.dataChanged.emit(top_left_index, bottom_right_index)
 
-    def _on_image_changed(self, event: Event) -> None:
-        if not isinstance(event.sources[0], Image):
-            return
+    def _on_image_event(self, event: Event) -> None:
         image = event.source
         assert isinstance(image, Image)
         column_index = next(
