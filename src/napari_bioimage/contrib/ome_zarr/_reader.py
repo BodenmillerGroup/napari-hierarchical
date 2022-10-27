@@ -65,9 +65,13 @@ def _get_image_layers(
                 channel_index=channel_index,
             )
             if channel_names is not None and len(channel_names) == num_channels:
-                image_layer.groups["Channel"] = channel_names[channel_index]
+                image_layer.groups[
+                    "Channel"
+                ] = f"[C{channel_index:02d}] channel_names[channel_index]"
             else:
-                image_layer.groups["Channel"] = f"Channel {channel_index}"
+                image_layer.groups[
+                    "Channel"
+                ] = f"[C{channel_index:02d}] Channel {channel_index}"
             yield image_layer
     else:
         image_layer = OMEZarrImageLayer(

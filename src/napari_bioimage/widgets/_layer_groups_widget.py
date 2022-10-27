@@ -6,10 +6,10 @@ from qtpy.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
 from .._controller import BioImageController
 from ..model import Layer
-from ._layer_grouping_widget import QLayerGroupingWidget
+from ._layer_groups_list_widget import QLayerGroupsListWidget
 
 
-class QLayerGroupingsWidget(QWidget):
+class QLayerGroupsWidget(QWidget):
     def __init__(
         self,
         controller: BioImageController,
@@ -19,7 +19,11 @@ class QLayerGroupingsWidget(QWidget):
         super().__init__(parent, flags)
         self._controller = controller
         self._layer_groupings_tab_widget = QTabWidget()
-        self._layer_grouping_widgets: Dict[str, QLayerGroupingWidget] = {}
+        self._layer_groups_list_widgets: Dict[str, QLayerGroupsListWidget] = {}
+        self._identity_layer_groups_list_widget = QLayerGroupsListWidget(controller)
+        self._layer_groupings_tab_widget.addTab(
+            self._identity_layer_groups_list_widget, "Layer"
+        )
         self._setup_ui()
         for layer in controller.layers:
             self._register_layer(layer)
@@ -32,6 +36,17 @@ class QLayerGroupingsWidget(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(self._layer_groupings_tab_widget)
         self.setLayout(layout)
+
+    def _register_layer(self, layer: Layer) -> None:
+        for grouping in layer.groups.keys():
+            if grouping not in self._layer_groups_list_widgets:
+                layer_grouping_widget = QLayerGroupsListWidget(
+                    self._controller,
+                    grouping=grouping,
+                    close_callback=lambda: self._on_close_requested(grouping),
+                )
+                self._layer_groupings_tab_widget.addTab(layer_grouping_widget, grouping)
+                self._layer_groups_list_widgets[grouping] = layer_grouping_widget
 
     def _connect_events(self) -> None:
         self._controller.layers.events.inserted.connect(self._on_layers_inserted_event)
@@ -56,15 +71,7 @@ class QLayerGroupingsWidget(QWidget):
                 assert isinstance(layer, Layer)
                 self._register_layer(layer)
 
-    def _on_close_requested(self, layer_grouping_widget: QLayerGroupingWidget) -> None:
-        tab_index = self._layer_groupings_tab_widget.indexOf(layer_grouping_widget)
+    def _on_close_requested(self, grouping: str) -> None:
+        layer_groups_list_widget = self._layer_groups_list_widgets[grouping]
+        tab_index = self._layer_groupings_tab_widget.indexOf(layer_groups_list_widget)
         self._layer_groupings_tab_widget.removeTab(tab_index)
-
-    def _register_layer(self, layer: Layer) -> None:
-        for grouping in layer.groups.keys():
-            if grouping not in self._layer_grouping_widgets:
-                layer_grouping_widget = QLayerGroupingWidget(
-                    self._controller, grouping, self._on_close_requested
-                )
-                self._layer_groupings_tab_widget.addTab(layer_grouping_widget, grouping)
-                self._layer_grouping_widgets[grouping] = layer_grouping_widget

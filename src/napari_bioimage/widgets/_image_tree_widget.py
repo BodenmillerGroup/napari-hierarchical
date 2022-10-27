@@ -19,6 +19,9 @@ class QImageTreeWidget(QWidget):
         self._image_tree_view = QTreeView()
         self._image_tree_model = QImageTreeModel(controller)
         self._image_tree_view.setModel(self._image_tree_model)
+        # self._image_tree_view.selectionModel().selectionChanged.connect(
+        #     self._on_image_tree_view_selection_changed
+        # )
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -33,3 +36,15 @@ class QImageTreeWidget(QWidget):
         self._image_tree_view.setDragDropMode(QTreeView.DragDropMode.InternalMove)
         layout.addWidget(self._image_tree_view)
         self.setLayout(layout)
+
+    # def _on_image_tree_view_selection_changed(
+    #     self, selected: QItemSelection, deselected: QItemSelection
+    # ) -> None:
+    #     self._controller.images.selection.clear()
+    #     self._controller.layers.selection.clear()
+    #     for index in self._image_tree_view.selectedIndexes():
+    #         image = index.internalPointer()
+    #         assert isinstance(image, Image)
+    #         self._controller.images.selection.add(image)
+    #         for layer in image.get_layers(recursive=True):
+    #             self._controller.layers.selection.add(layer)
