@@ -1,2 +1,2 @@
-class NapariDatasetException(Exception):
+class DatasetException(Exception):
     pass

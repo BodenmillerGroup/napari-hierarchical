@@ -3,7 +3,7 @@ from typing import Callable, Optional, Union
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QListView, QVBoxLayout, QWidget
 
-from napari_dataset import NapariDatasetController
+from napari_dataset import DatasetController
 
 from ._layer_grouping_list_model import QLayerGroupingListModel
 
@@ -11,7 +11,7 @@ from ._layer_grouping_list_model import QLayerGroupingListModel
 class QLayerGroupingListWidget(QWidget):
     def __init__(
         self,
-        controller: NapariDatasetController,
+        controller: DatasetController,
         grouping: Optional[str] = None,
         close_callback: Optional[Callable[[], None]] = None,
         parent: Optional[QWidget] = None,

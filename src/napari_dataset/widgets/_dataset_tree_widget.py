@@ -3,14 +3,14 @@ from typing import Optional, Union
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QTreeView, QVBoxLayout, QWidget
 
-from .._controller import NapariDatasetController
+from .._controller import DatasetController
 from ._dataset_tree_model import QDatasetTreeModel
 
 
 class QDatasetTreeWidget(QWidget):
     def __init__(
         self,
-        controller: NapariDatasetController,
+        controller: DatasetController,
         parent: Optional[QWidget] = None,
         flags: Union[Qt.WindowFlags, Qt.WindowType] = Qt.WindowFlags(),
     ) -> None:

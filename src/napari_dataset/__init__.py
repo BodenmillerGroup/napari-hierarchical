@@ -3,12 +3,8 @@ try:
 except ImportError:
     __version__ = "unknown"
 
-from ._controller import (
-    NapariDatasetController,
-    NapariDatasetControllerException,
-    controller,
-)
-from ._exceptions import NapariDatasetException
+from ._controller import DatasetController, DatasetControllerException, controller
+from ._exceptions import DatasetException
 from ._reader import napari_get_reader
 from .contrib import hdf5, imc, ome_zarr, zarr
 
@@ -23,8 +19,8 @@ if zarr.available:  # register after napari-dataset-ome-zarr!
 
 __all__ = [
     "controller",
-    "NapariDatasetController",
-    "NapariDatasetControllerException",
-    "NapariDatasetException",
+    "DatasetController",
+    "DatasetControllerException",
+    "DatasetException",
     "napari_get_reader",
 ]

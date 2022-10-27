@@ -4,7 +4,7 @@ from typing import Any, Callable, Iterable, List, NamedTuple, Optional
 from napari.utils.events import Event, EventedList
 from qtpy.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QObject, Qt
 
-from .._controller import NapariDatasetController
+from .._controller import DatasetController
 from ..model import Dataset, EventedDatasetChildrenList
 
 
@@ -19,7 +19,7 @@ class QDatasetTreeModel(QAbstractItemModel):
     ]
 
     def __init__(
-        self, controller: NapariDatasetController, parent: Optional[QObject] = None
+        self, controller: DatasetController, parent: Optional[QObject] = None
     ) -> None:
         super().__init__(parent)
         self._controller = controller

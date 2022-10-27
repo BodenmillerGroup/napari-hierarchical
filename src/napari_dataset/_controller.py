@@ -6,13 +6,13 @@ from napari.viewer import Viewer
 from pluggy import PluginManager
 
 from . import hookspecs
-from ._exceptions import NapariDatasetException
+from ._exceptions import DatasetException
 from .model import Dataset, Layer
 
 PathLike = Union[str, os.PathLike]
 
 
-class NapariDatasetController:
+class DatasetController:
     def __init__(self) -> None:
         self._pm = PluginManager("napari-dataset")
         self._pm.add_hookspecs(hookspecs)
@@ -37,11 +37,11 @@ class NapariDatasetController:
     def read(self, path: PathLike) -> Dataset:
         reader_function = self._get_reader_function(path)
         if reader_function is None:
-            raise NapariDatasetControllerException(f"No reader found for {path}")
+            raise DatasetControllerException(f"No reader found for {path}")
         try:
             dataset = reader_function(path)
         except Exception as e:
-            raise NapariDatasetControllerException(e)
+            raise DatasetControllerException(e)
         layers = dataset.get_layers(recursive=True)
         self._datasets.append(dataset)
         self._layers += layers
@@ -50,11 +50,11 @@ class NapariDatasetController:
     def write(self, path: PathLike, dataset: Dataset) -> None:
         writer_function = self._get_writer_function(path, dataset)
         if writer_function is None:
-            raise NapariDatasetControllerException(f"No writer found for {path}")
+            raise DatasetControllerException(f"No writer found for {path}")
         try:
             writer_function(path, dataset)
         except Exception as e:
-            raise NapariDatasetControllerException(e)
+            raise DatasetControllerException(e)
 
     def register_viewer(self, viewer: Viewer) -> None:
         assert self._viewer is None
@@ -100,8 +100,8 @@ class NapariDatasetController:
         return self._layers
 
 
-class NapariDatasetControllerException(NapariDatasetException):
+class DatasetControllerException(DatasetException):
     pass
 
 
-controller = NapariDatasetController()
+controller = DatasetController()

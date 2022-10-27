@@ -3,14 +3,14 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 from napari.utils.events import Event, EventedDict, EventedList
 from qtpy.QtCore import QAbstractTableModel, QModelIndex, QObject, Qt
 
-from .._controller import NapariDatasetController
+from .._controller import DatasetController
 from ..model import EventedLayerGroupsDict, Layer
 
 
 class QLayerGroupingListModel(QAbstractTableModel):
     def __init__(
         self,
-        controller: NapariDatasetController,
+        controller: DatasetController,
         grouping: Optional[str] = None,
         close_callback: Optional[Callable[[], None]] = None,
         parent: Optional[QObject] = None,
