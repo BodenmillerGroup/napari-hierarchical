@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 
 [tool.setuptools_scm]
-write_to = "src/napari_bioimage/_version.py"
+write_to = "src/napari_dataset/_version.py"
 
 [tool.isort]
 profile = "black"

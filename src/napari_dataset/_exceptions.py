@@ -1,0 +1,2 @@
+class NapariDatasetException(Exception):
+    pass

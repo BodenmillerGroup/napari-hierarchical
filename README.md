@@ -1,13 +1,13 @@
-# napari-bioimage
+# napari-dataset
 
-[![License MIT](https://img.shields.io/pypi/l/napari-bioimage.svg?color=green)](https://github.com/BodenmillerGroup/napari-bioimage/raw/main/LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/napari-bioimage.svg?color=green)](https://pypi.org/project/napari-bioimage)
-[![Python Version](https://img.shields.io/pypi/pyversions/napari-bioimage.svg?color=green)](https://python.org)
-[![tests](https://github.com/BodenmillerGroup/napari-bioimage/workflows/tests/badge.svg)](https://github.com/BodenmillerGroup/napari-bioimage/actions)
-[![codecov](https://codecov.io/gh/BodenmillerGroup/napari-bioimage/branch/main/graph/badge.svg)](https://codecov.io/gh/BodenmillerGroup/napari-bioimage)
-[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-bioimage)](https://napari-hub.org/plugins/napari-bioimage)
+[![License MIT](https://img.shields.io/pypi/l/napari-dataset.svg?color=green)](https://github.com/BodenmillerGroup/napari-dataset/raw/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/napari-dataset.svg?color=green)](https://pypi.org/project/napari-dataset)
+[![Python Version](https://img.shields.io/pypi/pyversions/napari-dataset.svg?color=green)](https://python.org)
+[![tests](https://github.com/BodenmillerGroup/napari-dataset/workflows/tests/badge.svg)](https://github.com/BodenmillerGroup/napari-dataset/actions)
+[![codecov](https://codecov.io/gh/BodenmillerGroup/napari-dataset/branch/main/graph/badge.svg)](https://codecov.io/gh/BodenmillerGroup/napari-dataset)
+[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-dataset)](https://napari-hub.org/plugins/napari-dataset)
 
-Complex bio-image file format support for napari
+Complex dataset support for napari
 
 ----------------------------------
 
@@ -18,45 +18,41 @@ This [napari] plugin was generated with [Cookiecutter] using [@napari]'s [cookie
 
 This plugin adds the following concepts to napari:
 
-- *Images* are hierarchically organized collections of layers
-  - Images can correspond to a physical file on disk
-  - Images may contain "child images" --> image trees
-  - The (user-editable) image trees are shown in the *Images* panel
-  - Reading an image means loading its tree (added as a "root node", without loading data)
-  - Writing an image means creating an image container on disk and saving all associated layers to it
-  - Selecting an image selects all layers associated with its (sub-)tree
-- *Layers* are viewable objects (cf. original napari layers, e.g. images, labels)
-  - Every layer belongs to an image (no direct correspondence to physical files on disk)
-  - "Anonymous layers" (cf. original napari layers) are assigned to a "New Image" upon creation
-  - Layers can be loaded/saved independently from/to images ("lazy reading/writing of images")
-  - Layers may be moved from one image to another in memory by the user
-- Layers are *grouped* by layer metadata (flat groupings across all images, e.g. by channel/label label name)
-  - Layer groupings are shown in the *Layers* panel, containing one tab for each metadata grouping (key)
-  - An additional grouping (tab) exists for Layer identity ("Layer" tab, cf. original napari Layers panel)
-  - Reading/writing a layer group means reading/writing all its layers
-  - Selecting a layer group selects all its layers
+- *Datasets* are collections of layers
+  - Datasets may correspond to a file (on disk, in the cloud, ...)
+  - Datasets may contain child datasets (hierarchies, cf. HDF5/Zarr)
+  - Reading a dataset: load the hierarchy from the corresponding file
+  - Writing a dataset: create a file and save all associated layers to it
+  - Selecting a dataset: select all layers associated with the dataset or its children
+  - Layers can be separately loaded from/saved to datasets
+- Layers are *grouped* by reader-defined metadata (e.g. channel/label name)
+  - Layers are grouped across all datasets (flat groupings)
+  - Each grouping is shown in a separate tab in the layers panel
+  - The "Layer" tab groups layers by their identity (cf. original napari Layers panel)
+  - Reading/writing a layer group: save/load all layers in the group
+  - Selecting a layer group: select all layers in the group
 
 
 ## Installation
 
-You can install `napari-bioimage` via [pip]:
+You can install `napari-dataset` via [pip]:
 
-    pip install "napari-bioimage[all]"
+    pip install "napari-dataset[all]"
 
 To install latest development version :
 
-    pip install "git+https://github.com/BodenmillerGroup/napari-bioimage.git#egg=napari-bioimage[all]"
+    pip install "git+https://github.com/BodenmillerGroup/napari-dataset.git#egg=napari-dataset[all]"
 
 
 ## Implementation
 
-This plugin implements reader, writer, and widget functionality. The reader reads an image (not actual image data, see description above) and opens the `QImagesWidget` and `QLayersWidget` widgets in `napari_bioimage.widgets`. The writer writes the selected layers (not the entire image, see description above). All operations are done through the `napari_bioimage.controller` singleton instance, which "extends" the functionality of `napari.viewer.Viewer`.
+This plugin implements reader, writer, and widget functionality. The reader reads a dataset (not actual image data, see description above) and opens the `QDatasetsWidget` and `QLayerGroupingsWidget` widgets in `napari_dataset.widgets`. The writer writes the selected layers (not the entire dataset, see description above). All operations are done through the `napari_dataset.controller` singleton instance, which "extends" the functionality of `napari.viewer.Viewer`.
 
-Image readers/writers are implemented as plugins using [pluggy](https://pluggy.readthedocs.io), similar to the [first-generation napari plugin engine](https://github.com/napari/napari-plugin-engine). Out of the box, this plugin ships with readers/writers for HDF5, Zarr, OME-Zarr, and imaging mass cytometry (IMC) file formats, implemented in `napari_bioimage.contrib`. Additionally, the plugin also provides sample data for these file formats.
+Dataset readers/writers are implemented as plugins using [pluggy](https://pluggy.readthedocs.io), similar to the [first-generation napari plugin engine](https://github.com/napari/napari-plugin-engine). Out of the box, this plugin ships with readers/writers for HDF5, Zarr, OME-Zarr, and imaging mass cytometry (IMC) file formats, implemented in `napari_dataset.contrib`. Additionally, the plugin also provides sample data for these file formats.
 
-The hierarchical image/layer model (composite tree pattern) is implemented in `napari_bioimage.model`. For consistency with the original napari layer model, all model classes inherit from `napari.utils.events.EventedModel`. This renders the creation of lazy models (e.g. for representing the whole file system) impossible, which is intended. Despite implementing a composite tree pattern, the model classes do not inherit from `napari.utils.tree` to avoid problems due to multiple inheritance/pydantic.
+The hierarchical dataset/layer model (composite tree pattern) is implemented in `napari_dataset.model`. For consistency with the original napari layer model, all model classes inherit from `napari.utils.events.EventedModel`. This renders the creation of lazy models (e.g. for representing the whole file system) impossible, which is intended. Despite implementing a composite tree pattern, the model classes do not inherit from `napari.utils.tree` to avoid problems due to multiple inheritance/pydantic.
 
-The Qt tree model is implemented in `napari_bioimage.widgets.QImageTreeModel`. For listening to model changes, due to [problems with propagating events in nested EventedModel/EventedList hierarchies](https://napari.zulipchat.com/#narrow/stream/212875-general/topic/.E2.9C.94.20model.20events.20propagation), individual event handlers need to be registered for each ImageGroup instance.
+The Qt tree model is implemented in `napari_dataset.widgets.QDatasetTreeModel`. For listening to model changes, due to [problems with propagating events in nested EventedModel/EventedList hierarchies](https://napari.zulipchat.com/#narrow/stream/212875-general/topic/.E2.9C.94.20model.20events.20propagation), individual event handlers need to be registered for each Dataset instance.
 
 ## Contributing
 
@@ -67,7 +63,7 @@ the coverage at least stays the same before you submit a pull request.
 ## License
 
 Distributed under the terms of the [MIT] license,
-"napari-bioimage" is free and open source software
+"napari-dataset" is free and open source software
 
 
 ## Issues
@@ -85,7 +81,7 @@ If you encounter any problems, please [file an issue] along with a detailed desc
 [Mozilla Public License 2.0]: https://www.mozilla.org/media/MPL/2.0/index.txt
 [cookiecutter-napari-plugin]: https://github.com/napari/cookiecutter-napari-plugin
 
-[file an issue]: https://github.com/BodenmillerGroup/napari-bioimage/issues
+[file an issue]: https://github.com/BodenmillerGroup/napari-dataset/issues
 
 [napari]: https://github.com/napari/napari
 [tox]: https://tox.readthedocs.io/en/latest/
