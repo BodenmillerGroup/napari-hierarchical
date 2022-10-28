@@ -1,6 +1,5 @@
-from typing import Optional, Sequence
+from typing import Generator, Optional
 
-from napari.layers import Layer as NapariLayer
 from napari.utils.events import EventedModel
 from napari.utils.events.containers import EventedDict, EventedList
 from pydantic import Field
@@ -10,7 +9,6 @@ from pydantic import Field
 class Layer(EventedModel):
     name: str
     dataset: "Dataset"
-    layer: Optional[NapariLayer] = None
     groups: "EventedLayerGroupsDict" = Field(
         default_factory=lambda: EventedLayerGroupsDict()
     )  # grouping --> group
@@ -18,30 +16,6 @@ class Layer(EventedModel):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.groups._layer = self
-
-    def load(self) -> NapariLayer:
-        if self.layer is None:
-            raise NotImplementedError(f"{self} cannot be loaded")
-        return self.layer
-
-    def save(self) -> None:
-        raise NotImplementedError(f"{self} cannot be saved")
-
-    def to_layer(self, dataset: Optional["Dataset"] = None) -> "Layer":
-        new_layer = Layer(name=self.name, dataset=dataset, layer=self.layer)
-        new_layer.groups.update(self.groups)
-        return new_layer
-
-    @property
-    def loaded(self) -> bool:
-        return self.layer is not None
-
-    # QModelIndex may point to instances that have been garbage-collected by Python
-    # Workaround for QDatasetTreeModel: prevent Python from garbage-collecting objects
-    # by retaining a reference indefinitely (but release as much memory as possible)
-    def free_memory(self) -> None:
-        self.layer = None
-        self.groups.clear()
 
 
 class EventedLayerGroupsDict(EventedDict[str, str]):
@@ -58,11 +32,11 @@ class EventedLayerGroupsDict(EventedDict[str, str]):
 class Dataset(EventedModel):
     name: str
     parent: Optional["Dataset"] = None
-    children: "EventedDatasetChildrenList" = Field(
-        default_factory=lambda: EventedDatasetChildrenList()
-    )
     layers: "EventedDatasetLayersList" = Field(
         default_factory=lambda: EventedDatasetLayersList()
+    )
+    children: "EventedDatasetChildrenList" = Field(
+        default_factory=lambda: EventedDatasetChildrenList()
     )
 
     def __init__(self, **kwargs) -> None:
@@ -70,31 +44,20 @@ class Dataset(EventedModel):
         self.children._dataset = self
         self.layers._dataset = self
 
-    def to_dataset(self, parent: Optional["Dataset"] = None) -> "Dataset":
-        new_dataset = Dataset(name=self.name, parent=parent)
-        for child_dataset in self.children:
-            new_child_dataset = child_dataset.to_dataset(parent=new_dataset)
-            new_dataset.children.append(new_child_dataset)
-        for layer in self.layers:
-            new_layer = layer.to_layer(dataset=new_dataset)
-            new_dataset.layers.append(new_layer)
-        return new_dataset
-
-    def get_layers(self, recursive: bool = False) -> Sequence[Layer]:
-        layers = list(self.layers)
+    def iter_layers(self, recursive: bool = False) -> Generator[Layer, None, None]:
+        yield from self.layers
         if recursive:
-            for child_dataset in self.children:
-                layers += child_dataset.get_layers(recursive=True)
-        return layers
+            for child in self.children:
+                yield from child.iter_layers(recursive=recursive)
 
-    # QModelIndex may point to instances that have been garbage-collected by Python
-    # Workaround for QDatasetTreeModel: prevent Python from garbage-collecting objects
-    # by retaining a reference indefinitely (but release as much memory as possible)
-    def free_memory(self) -> None:
-        for child_dataset in self.children:
-            child_dataset.free_memory()
-        for layer in self.layers:
-            layer.free_memory()
+    def iter_children(
+        self, recursive: bool = False
+    ) -> Generator["Dataset", None, None]:
+        for child in self.children:
+            yield child
+        if recursive:
+            for child in self.children:
+                yield from child.iter_children(recursive=recursive)
 
 
 class EventedDatasetChildrenList(EventedList[Dataset]):

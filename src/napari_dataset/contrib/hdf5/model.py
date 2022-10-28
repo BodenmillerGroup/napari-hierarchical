@@ -1,25 +1,21 @@
-from napari.layers import Image as NapariImageLayer
-from napari.layers import Layer as NapariLayer
+from typing import Optional, Tuple
 
-from napari_dataset.model import Layer
+from napari_dataset.model import Dataset, Layer
 
-try:
-    import dask.array as da
-    import h5py
-except ModuleNotFoundError:
-    da = None
-    h5py = None
+
+class HDF5Dataset(Dataset):
+    hdf5_file: str
+
+    @staticmethod
+    def get_root(dataset: Dataset) -> Tuple[Optional["HDF5Dataset"], str]:
+        dataset_names = []
+        while dataset.parent is not None or (
+            dataset is not None and not isinstance(dataset, HDF5Dataset)
+        ):
+            dataset_names.append(dataset.name)
+            dataset = dataset.parent
+        return dataset, "/".join(reversed(dataset_names))
 
 
 class HDF5Layer(Layer):
-    hdf5_file: str
-    path: str
-
-    def load(self) -> NapariLayer:
-        with h5py.File(self.hdf5_file) as f:
-            data = da.from_array(f[self.path])
-        napari_layer = NapariImageLayer(name=self.name, data=data)
-        return napari_layer
-
-    def save(self) -> None:
-        raise NotImplementedError()  # TODO
+    root_hdf5_dataset: HDF5Dataset

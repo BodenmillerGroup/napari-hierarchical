@@ -23,7 +23,7 @@ class QDatasetTreeModel(QAbstractItemModel):
     ) -> None:
         super().__init__(parent)
         self._controller = controller
-        self._orphan_images: List[Dataset] = []
+        self._orphan_datasets: List[Dataset] = []
         self._pending_drop_actions: List[Callable[[], None]] = []
         self._remaining_removes_before_drop = 0
         self._connect_events()
@@ -36,33 +36,33 @@ class QDatasetTreeModel(QAbstractItemModel):
     ) -> QModelIndex:
         if 0 <= column < len(self.COLUMNS):
             if parent.isValid():
-                parent_image = parent.internalPointer()
-                assert isinstance(parent_image, Dataset)
-                if 0 <= row < len(parent_image.children):
-                    image = parent_image.children[row]
-                    return self.createIndex(row, column, object=image)
+                parent_dataset = parent.internalPointer()
+                assert isinstance(parent_dataset, Dataset)
+                if 0 <= row < len(parent_dataset.children):
+                    dataset = parent_dataset.children[row]
+                    return self.createIndex(row, column, object=dataset)
             elif 0 <= row < len(self._controller.datasets):
-                image = self._controller.datasets[row]
-                return self.createIndex(row, column, object=image)
+                dataset = self._controller.datasets[row]
+                return self.createIndex(row, column, object=dataset)
         return QModelIndex()
 
     def parent(self, index: QModelIndex) -> QModelIndex:
         if index.isValid():
-            image = index.internalPointer()
-            assert isinstance(image, Dataset)
-            if image.parent is not None:
-                if image.parent.parent is not None:
-                    row = image.parent.parent.children.index(image.parent)
+            dataset = index.internalPointer()
+            assert isinstance(dataset, Dataset)
+            if dataset.parent is not None:
+                if dataset.parent.parent is not None:
+                    row = dataset.parent.parent.children.index(dataset.parent)
                 else:
-                    row = self._controller.datasets.index(image.parent)
-                return self.createIndex(row, 0, object=image.parent)
+                    row = self._controller.datasets.index(dataset.parent)
+                return self.createIndex(row, 0, object=dataset.parent)
         return QModelIndex()
 
     def rowCount(self, index: QModelIndex = QModelIndex()) -> int:
         if index.isValid():
-            image = index.internalPointer()
-            assert isinstance(image, Dataset)
-            return len(image.children)
+            dataset = index.internalPointer()
+            assert isinstance(dataset, Dataset)
+            return len(dataset.children)
         return len(self._controller.datasets)
 
     def columnCount(self, index: QModelIndex = QModelIndex()) -> int:
@@ -73,22 +73,22 @@ class QDatasetTreeModel(QAbstractItemModel):
             Qt.ItemDataRole.DisplayRole,
             Qt.ItemDataRole.EditRole,
         ):
-            image = index.internalPointer()
-            assert isinstance(image, Dataset)
+            dataset = index.internalPointer()
+            assert isinstance(dataset, Dataset)
             assert 0 <= index.column() < len(self.COLUMNS)
             column = self.COLUMNS[index.column()]
-            return getattr(image, column.field)
+            return getattr(dataset, column.field)
         return None
 
     def setData(
         self, index: QModelIndex, value: Any, role: int = Qt.ItemDataRole.EditRole
     ) -> bool:
         if index.isValid() and role == Qt.ItemDataRole.EditRole:
-            image = index.internalPointer()
-            assert isinstance(image, Dataset)
+            dataset = index.internalPointer()
+            assert isinstance(dataset, Dataset)
             assert 0 <= index.column() < len(self.COLUMNS)
             column = self.COLUMNS[index.column()]
-            setattr(image, column.field, value)
+            setattr(dataset, column.field, value)
             return True
         return False
 
@@ -120,16 +120,16 @@ class QDatasetTreeModel(QAbstractItemModel):
         self, row: int, count: int, parent: QModelIndex = QModelIndex()
     ) -> bool:
         if parent.isValid():
-            parent_image = parent.internalPointer()
-            assert isinstance(parent_image, Dataset)
-            images = parent_image.children
+            parent_dataset = parent.internalPointer()
+            assert isinstance(parent_dataset, Dataset)
+            datasets = parent_dataset.children
         else:
-            parent_image = None
-            images = self._controller.datasets
-        if 0 <= row <= len(images) and count > 0:
+            parent_dataset = None
+            datasets = self._controller.datasets
+        if 0 <= row <= len(datasets) and count > 0:
             for i in range(row, row + count):
-                image = Dataset(name="New Image", parent=parent_image)
-                images.insert(i, image)
+                dataset = Dataset(name="New Image", parent=parent_dataset)
+                datasets.insert(i, dataset)
             return True
         return False
 
@@ -137,18 +137,17 @@ class QDatasetTreeModel(QAbstractItemModel):
         self, row: int, count: int, parent: QModelIndex = QModelIndex()
     ) -> bool:
         if parent.isValid():
-            parent_image = parent.internalPointer()
-            assert isinstance(parent_image, Dataset)
-            images = parent_image.children
+            parent_dataset = parent.internalPointer()
+            assert isinstance(parent_dataset, Dataset)
+            datasets = parent_dataset.children
         else:
-            images = self._controller.datasets
-        if 0 <= row < row + count <= len(images) and count > 0:
+            datasets = self._controller.datasets
+        if 0 <= row < row + count <= len(datasets) and count > 0:
             for _ in range(count):
-                image = images.pop(row)
+                dataset = datasets.pop(row)
                 # prevent Python from garbage-collecting objects that are referenced by
                 # existing QModelIndex instances, but release as much memory as possible
-                self._orphan_images.append(image)
-                image.free_memory()
+                self._orphan_datasets.append(dataset)
             # finish drag and drop action
             if self._remaining_removes_before_drop > 0:
                 self._remaining_removes_before_drop -= count
@@ -164,7 +163,8 @@ class QDatasetTreeModel(QAbstractItemModel):
 
     def mimeTypes(self) -> List[str]:
         mime_types = super().mimeTypes()
-        mime_types.append("x-napari-dataset")
+        mime_types.append("x-napari-dataset-dataset")
+        mime_types.append("x-napari-dataset-layer")
         return mime_types
 
     def mimeData(self, indexes: Iterable[QModelIndex]) -> QMimeData:
@@ -176,7 +176,7 @@ class QDatasetTreeModel(QAbstractItemModel):
                 indices_stack.append(index.row())
                 index = index.parent()
             indices_stacks.append(indices_stack)
-        data.setData("x-napari-dataset", pickle.dumps(indices_stacks))
+        data.setData("x-napari-dataset-dataset", pickle.dumps(indices_stacks))
         return data
 
     def dropMimeData(
@@ -187,88 +187,94 @@ class QDatasetTreeModel(QAbstractItemModel):
         column: int,
         parent: QModelIndex,
     ) -> bool:
-        if data.hasFormat("x-napari-dataset") and action in (
-            Qt.DropAction.CopyAction,
-            Qt.DropAction.MoveAction,
-        ):
-            indices_stacks = pickle.loads(data.data("x-napari-dataset").data())
+        if action not in (Qt.DropAction.CopyAction, Qt.DropAction.MoveAction):
+            return False
+        if data.hasFormat("x-napari-dataset-dataset"):
+            indices_stacks = pickle.loads(data.data("x-napari-dataset-dataset").data())
             assert isinstance(indices_stacks, list) and len(indices_stacks) > 0
             if parent.isValid():
-                parent_image = parent.internalPointer()
-                assert isinstance(parent_image, Dataset)
-                images = parent_image.children
+                parent_dataset = parent.internalPointer()
+                assert isinstance(parent_dataset, Dataset)
+                datasets = parent_dataset.children
             else:
-                parent_image = None
-                images = self._controller.datasets
+                parent_dataset = None
+                datasets = self._controller.datasets
             if row == -1 and column == -1:
-                row = len(images)
-            assert 0 <= row <= len(images)
+                row = len(datasets)
+            assert 0 <= row <= len(datasets)
             n = 0
             while len(indices_stacks) > 0:
                 indices_stack = indices_stacks.pop(0)
                 assert isinstance(indices_stack, list) and len(indices_stack) > 0
-                source_images = self._controller.datasets
+                source_datasets = self._controller.datasets
                 source_row = indices_stack.pop()
                 assert isinstance(source_row, int)
                 while len(indices_stack) > 0:
-                    source_images = source_images[source_row].children
+                    source_datasets = source_datasets[source_row].children
                     source_row = indices_stack.pop()
                     assert isinstance(source_row, int)
                 index = row + n
-                if images == source_images and index > source_row:
+                if datasets == source_datasets and index > source_row:
                     index -= 1
-                image = source_images[source_row].to_dataset(parent=parent_image)
-                self._pending_drop_actions.append(lambda: images.insert(index, image))
+                dataset = source_datasets[source_row]
+
+                def drop_action():
+                    datasets.insert(index, dataset)
+                    dataset.parent = parent_dataset
+
+                self._pending_drop_actions.append(drop_action)
                 self._remaining_removes_before_drop += 1
                 n += 1
             return True
+        if data.hasFormat("x-napari-dataset-layer"):
+            pass  # TODO
         return False
 
     def _connect_events(self) -> None:
         for image in self._controller.datasets:
             self._connect_image_events(image)
-        self._controller.datasets.events.connect(self._on_images_event)
+        self._controller.datasets.events.connect(self._on_datasets_event)
 
     def _disconnect_events(self) -> None:
-        self._controller.datasets.events.disconnect(self._on_images_event)
+        self._controller.datasets.events.disconnect(self._on_datasets_event)
         for image in self._controller.datasets:
             self._disconnect_image_events(image)
 
     def _connect_image_events(self, image: Dataset) -> None:
         for child_image in image.children:
             self._connect_image_events(child_image)
-        image.children.events.connect(self._on_images_event)
+        image.children.events.connect(self._on_datasets_event)
         image.events.connect(self._on_image_event)
 
     def _disconnect_image_events(self, image: Dataset) -> None:
         image.events.disconnect(self._on_image_event)
-        image.children.events.disconnect(self._on_images_event)
+        image.children.events.disconnect(self._on_datasets_event)
         for child_image in image.children:
             self._disconnect_image_events(child_image)
 
-    def _on_images_event(self, event: Event) -> None:
+    def _on_datasets_event(self, event: Event) -> None:
         if not isinstance(event.sources[0], EventedList):
             return
         assert isinstance(event.source, EventedList)
         if isinstance(event.source, EventedDatasetChildrenList):
-            image = event.source.dataset
-            child_images = image.children
+            dataset = event.source.dataset
+            child_datasets = dataset.children
         else:
-            image = None
-            child_images = self._controller.datasets
+            dataset = None
+            child_datasets = self._controller.datasets
 
         def get_parent():
-            if image is not None:
-                if image.parent is not None:
-                    parent_row = image.parent.children.index(image)
+            if dataset is not None:
+                if dataset.parent is not None:
+                    parent_row = dataset.parent.children.index(dataset)
                 else:
-                    parent_row = self._controller.datasets.index(image)
-                return self.createIndex(parent_row, 0, object=image)
+                    parent_row = self._controller.datasets.index(dataset)
+                return self.createIndex(parent_row, 0, object=dataset)
             return QModelIndex()
 
         if event.type == "inserting":
             assert isinstance(event.index, int) and 0 <= event.index <= len(
-                child_images
+                child_datasets
             )
             self.beginInsertRows(get_parent(), event.index, event.index)
         elif event.type == "inserted":
@@ -276,16 +282,20 @@ class QDatasetTreeModel(QAbstractItemModel):
             assert isinstance(event.value, Dataset)
             self._connect_image_events(event.value)
         elif event.type == "removing":
-            assert isinstance(event.index, int) and 0 <= event.index < len(child_images)
-            self._disconnect_image_events(child_images[event.index])
+            assert isinstance(event.index, int) and 0 <= event.index < len(
+                child_datasets
+            )
+            self._disconnect_image_events(child_datasets[event.index])
             self.beginRemoveRows(get_parent(), event.index, event.index)
         elif event.type == "removed":
             self.endRemoveRows()
         elif event.type == "moving":
-            assert isinstance(event.index, int) and 0 <= event.index < len(child_images)
+            assert isinstance(event.index, int) and 0 <= event.index < len(
+                child_datasets
+            )
             assert (
                 isinstance(event.new_index, int)
-                and 0 <= event.new_index <= len(child_images)
+                and 0 <= event.new_index <= len(child_datasets)
                 and event.new_index != event.index
             )
             parent = get_parent()
@@ -295,31 +305,33 @@ class QDatasetTreeModel(QAbstractItemModel):
         elif event.type == "moved":
             self.endMoveRows()
         elif event.type == "changed" and isinstance(event.index, int):
-            assert 0 <= event.index < len(child_images)
+            assert 0 <= event.index < len(child_datasets)
             left_index = self.createIndex(
-                event.index, 0, object=child_images[event.index]
+                event.index, 0, object=child_datasets[event.index]
             )
             right_index = self.createIndex(
-                event.index, len(self.COLUMNS) - 1, object=child_images[event.index]
+                event.index, len(self.COLUMNS) - 1, object=child_datasets[event.index]
             )
             self.dataChanged.emit(left_index, right_index)
         elif event.type in ("changed", "reordered"):
-            top_left_index = self.createIndex(0, 0, object=child_images[0])
+            top_left_index = self.createIndex(0, 0, object=child_datasets[0])
             bottom_right_index = self.createIndex(
-                len(child_images) - 1, len(self.COLUMNS) - 1, object=child_images[-1]
+                len(child_datasets) - 1,
+                len(self.COLUMNS) - 1,
+                object=child_datasets[-1],
             )
             self.dataChanged.emit(top_left_index, bottom_right_index)
 
     def _on_image_event(self, event: Event) -> None:
-        image = event.source
-        assert isinstance(image, Dataset)
+        dataset = event.source
+        assert isinstance(dataset, Dataset)
         column_index = next(
             (i for i, c in enumerate(self.COLUMNS) if c.field == event.type), None
         )
         if column_index is not None:
-            if image.parent is not None:
-                row = image.parent.children.index(image)
+            if dataset.parent is not None:
+                row = dataset.parent.children.index(dataset)
             else:
-                row = self._controller.datasets.index(image)
-            index = self.createIndex(row, column_index, object=image)
+                row = self._controller.datasets.index(dataset)
+            index = self.createIndex(row, column_index, object=dataset)
             self.dataChanged.emit(index, index)

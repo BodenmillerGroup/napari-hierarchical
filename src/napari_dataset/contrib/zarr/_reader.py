@@ -1,61 +1,75 @@
 import os
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
-from napari_dataset.model import Dataset
+from napari.layers import Image as NapariImageLayer
+from napari.layers import Layer as NapariLayer
 
-from .model import ZarrLayer
+from napari_dataset.model import Dataset, Layer
+
+from .model import ZarrDataset, ZarrLayer
 
 try:
+    import dask.array as da
     import zarr
 except ModuleNotFoundError:
+    da = None
     zarr = None
 
 PathLike = Union[str, os.PathLike]
 
 
-def read_zarr(path: PathLike) -> Dataset:
-    zarr_file = Path(path)
-    while zarr_file is not None and zarr_file.suffix != ".zarr":
-        zarr_file = zarr_file.parent
-    assert zarr_file is not None
-    z = zarr.open(store=path, mode="r")
-    name = str(Path(path).relative_to(zarr_file.parent))
+def read_zarr_dataset(path: PathLike) -> Dataset:
+    zarr_dataset = ZarrDataset(name=Path(path).name, zarr_file=str(path))
+    z = zarr.open(store=str(path), mode="r")
     if isinstance(z, zarr.Group):
-        dataset = _create_dataset_for_zarr_group(name, z)
+        for _, child_group in z.groups():
+            child_group_dataset = _create_zarr_group_dataset(child_group, zarr_dataset)
+            zarr_dataset.children.append(child_group_dataset)
+        for _, child_array in z.arrays():
+            child_array_dataset = _create_zarr_array_dataset(child_array, zarr_dataset)
+            zarr_dataset.children.append(child_array_dataset)
     elif isinstance(z, zarr.Array):
-        dataset = _create_dataset_for_zarr_array(name, z)
+        layer = Layer(name=zarr_dataset.name, dataset=zarr_dataset)
+        zarr_dataset.layers.append(layer)
     else:
-        raise TypeError(f"Unsupported zarr type: {type(z)}")
+        raise TypeError(f"Unsupported Zarr type: {type(z)}")
+    return zarr_dataset
+
+
+def load_zarr_layer(layer: Layer) -> NapariLayer:
+    if not isinstance(layer, ZarrLayer):
+        raise TypeError(f"Not a Zarr layer: {layer}")
+    root_zarr_dataset, zarr_path = ZarrDataset.get_root(layer.dataset)
+    if layer.root_zarr_dataset != root_zarr_dataset:
+        raise ValueError(f"Not part of original Zarr dataset: {layer}")
+    z = zarr.open(store=root_zarr_dataset.zarr_file, mode="r")
+    data = da.from_zarr(z[zarr_path])
+    napari_layer = NapariImageLayer(name=layer.name, data=data)
+    return napari_layer
+
+
+def _create_zarr_group_dataset(zarr_group: "zarr.Group", parent: Dataset) -> Dataset:
+    assert isinstance(zarr_group, zarr.Group)
+    dataset = Dataset(name=zarr_group.name, parent=parent)
+    for _, child_group in zarr_group.groups():
+        child_group_dataset = _create_zarr_group_dataset(child_group, dataset)
+        dataset.children.append(child_group_dataset)
+    for _, child_array in zarr_group.arrays():
+        child_array_dataset = _create_zarr_array_dataset(child_array, dataset)
+        dataset.children.append(child_array_dataset)
     return dataset
 
 
-def _create_dataset_for_zarr_group(
-    name: str, group: "zarr.Group", parent: Optional[Dataset] = None
-) -> Dataset:
-    dataset = Dataset(name=name, parent=parent)
-    for child_group_name, child_group in group.groups():
-        child_dataset = _create_dataset_for_zarr_group(
-            child_group_name, child_group, parent=dataset
-        )
-        dataset.children.append(child_dataset)
-    for child_array_name, child_array in group.arrays():
-        child_dataset = _create_dataset_for_zarr_array(
-            child_array_name, child_array, parent=dataset
-        )
-        dataset.children.append(child_dataset)
-    return dataset
-
-
-def _create_dataset_for_zarr_array(
-    name: str, array: "zarr.Array", parent: Optional[Dataset] = None
-) -> Dataset:
-    dataset = Dataset(name=name, parent=parent)
+def _create_zarr_array_dataset(zarr_array: "zarr.Array", parent: Dataset) -> Dataset:
+    assert isinstance(zarr_array, zarr.Array)
+    dataset = Dataset(name=zarr_array.name, parent=parent)
+    root_zarr_dataset, zarr_path = ZarrDataset.get_root(dataset)
+    assert root_zarr_dataset is not None
     layer = ZarrLayer(
-        name=f"{Path(array.path).name} [{array.name}]",
+        name=f"{Path(root_zarr_dataset.zarr_file).name} [{zarr_path}]",
         dataset=dataset,
-        zarr_file=array.path,
-        path=array.name,
+        root_zarr_dataset=root_zarr_dataset,
     )
     dataset.layers.append(layer)
     return dataset

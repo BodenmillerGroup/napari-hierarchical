@@ -2,13 +2,20 @@ import os
 from pathlib import Path
 from typing import Optional, Union
 
+from napari.layers import Layer as NapariLayer
 from pluggy import HookimplMarker
 
-from napari_dataset.hookspecs import ReaderFunction, WriterFunction
-from napari_dataset.model import Dataset
+from napari_dataset.hookspecs import (
+    DatasetReaderFunction,
+    DatasetWriterFunction,
+    LayerLoaderFunction,
+    LayerSaverFunction,
+)
+from napari_dataset.model import Dataset, Layer
 
-from ._reader import read_hdf5
-from ._writer import write_hdf5
+from ._reader import load_hdf5_layer, read_hdf5_dataset
+from ._writer import save_hdf5_layer, write_hdf5_dataset
+from .model import HDF5Dataset, HDF5Layer
 
 try:
     import h5py
@@ -23,26 +30,47 @@ hookimpl = HookimplMarker("napari-dataset")
 
 
 @hookimpl
-def napari_dataset_get_reader(path: PathLike) -> Optional[ReaderFunction]:
+def napari_dataset_get_dataset_reader(
+    path: PathLike,
+) -> Optional[DatasetReaderFunction]:
     if available and Path(path).suffix == ".h5":
-        return read_hdf5
+        return read_hdf5_dataset
     return None
 
 
 @hookimpl
-def napari_dataset_get_writer(
-    path: PathLike, dataset: Dataset
-) -> Optional[WriterFunction]:
-    # TODO
-    # if available and Path(path).suffix == ".h5":
-    #     return write_hdf5
+def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunction]:
+    if (
+        available
+        and isinstance(layer, HDF5Layer)
+        and HDF5Dataset.get_root(layer.dataset)[0] == layer.root_hdf5_dataset
+    ):
+        return load_hdf5_layer
     return None
+
+
+@hookimpl
+def napari_dataset_get_dataset_writer(
+    path: PathLike, dataset: Dataset
+) -> Optional[DatasetWriterFunction]:
+    return None  # TODO
+
+
+@hookimpl
+def napari_dataset_get_layer_saver(
+    layer: Layer, napari_layer: NapariLayer
+) -> Optional[LayerSaverFunction]:
+    return None  # TODO
 
 
 __all__ = [
     "available",
-    "read_hdf5",
-    "write_hdf5",
-    "napari_dataset_get_reader",
-    "napari_dataset_get_writer",
+    "read_hdf5_dataset",
+    "load_hdf5_layer",
+    "write_hdf5_dataset",
+    "save_hdf5_layer",
+    "napari_dataset_get_dataset_reader",
+    "napari_dataset_get_layer_loader",
+    "napari_dataset_get_dataset_writer",
+    "napari_dataset_get_layer_saver",
 ]

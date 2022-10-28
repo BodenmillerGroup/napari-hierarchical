@@ -1,25 +1,21 @@
-from napari.layers import Image as NapariImageLayer
-from napari.layers import Layer as NapariLayer
+from typing import Optional, Tuple
 
-from napari_dataset.model import Layer
+from napari_dataset.model import Dataset, Layer
 
-try:
-    import dask.array as da
-    import zarr
-except ModuleNotFoundError:
-    da = None
-    zarr = None
+
+class ZarrDataset(Dataset):
+    zarr_file: str
+
+    @staticmethod
+    def get_root(dataset: Dataset) -> Tuple[Optional["ZarrDataset"], str]:
+        dataset_names = []
+        while dataset.parent is not None or (
+            dataset is not None and not isinstance(dataset, ZarrDataset)
+        ):
+            dataset_names.append(dataset.name)
+            dataset = dataset.parent
+        return dataset, "/".join(reversed(dataset_names))
 
 
 class ZarrLayer(Layer):
-    zarr_file: str
-    path: str
-
-    def load(self) -> NapariLayer:
-        z = zarr.open(store=self.zarr_file, mode="r")
-        data = da.from_zarr(z[self.path])
-        napari_layer = NapariImageLayer(name=self.name, data=data)
-        return napari_layer
-
-    def save(self) -> None:
-        raise NotImplementedError()  # TODO
+    root_zarr_dataset: ZarrDataset

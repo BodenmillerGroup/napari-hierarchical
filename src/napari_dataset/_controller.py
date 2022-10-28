@@ -1,6 +1,7 @@
 import os
 from typing import Optional, Union
 
+from napari.layers import Layer as NapariLayer
 from napari.utils.events import EventedList
 from napari.viewer import Viewer
 from pluggy import PluginManager
@@ -24,35 +25,61 @@ class DatasetController:
         self._layers: EventedList[Layer] = EventedList(
             basetype=Layer, lookup={str: lambda layer: layer.name}
         )
-        # self._layers.selection.events.connect(self._on_layers_selection_event)
 
-    def can_read(self, path: PathLike) -> bool:
-        reader_function = self._get_reader_function(path)
-        return reader_function is not None
+    def can_read_dataset(self, path: PathLike) -> bool:
+        dataset_reader_function = self._get_dataset_reader_function(path)
+        return dataset_reader_function is not None
 
-    def can_write(self, path: PathLike, dataset: Dataset) -> bool:
-        writer_function = self._get_writer_function(path, dataset)
-        return writer_function is not None
+    def can_write_dataset(self, path: PathLike, dataset: Dataset) -> bool:
+        dataset_writer_function = self._get_dataset_writer_function(path, dataset)
+        return dataset_writer_function is not None
 
-    def read(self, path: PathLike) -> Dataset:
-        reader_function = self._get_reader_function(path)
-        if reader_function is None:
-            raise DatasetControllerException(f"No reader found for {path}")
+    def can_load_layer(self, layer: Layer) -> bool:
+        layer_loader_function = self._get_layer_loader_function(layer)
+        return layer_loader_function is not None
+
+    def can_save_layer(self, layer: Layer, napari_layer: NapariLayer) -> bool:
+        layer_saver_function = self._get_layer_saver_function(layer, napari_layer)
+        return layer_saver_function is not None
+
+    def read_dataset(self, path: PathLike) -> Dataset:
+        dataset_reader_function = self._get_dataset_reader_function(path)
+        if dataset_reader_function is None:
+            raise DatasetControllerException(f"No dataset reader found for {path}")
         try:
-            dataset = reader_function(path)
+            dataset = dataset_reader_function(path)
         except Exception as e:
             raise DatasetControllerException(e)
-        layers = dataset.get_layers(recursive=True)
         self._datasets.append(dataset)
-        self._layers += layers
+        for layer in dataset.iter_layers(recursive=True):
+            self._layers.append(layer)
         return dataset
 
-    def write(self, path: PathLike, dataset: Dataset) -> None:
-        writer_function = self._get_writer_function(path, dataset)
-        if writer_function is None:
-            raise DatasetControllerException(f"No writer found for {path}")
+    def write_dataset(self, path: PathLike, dataset: Dataset) -> None:
+        dataset_writer_function = self._get_dataset_writer_function(path, dataset)
+        if dataset_writer_function is None:
+            raise DatasetControllerException(f"No dataset writer found for {path}")
         try:
-            writer_function(path, dataset)
+            dataset_writer_function(path, dataset)
+        except Exception as e:
+            raise DatasetControllerException(e)
+
+    def load_layer(self, layer: Layer) -> NapariLayer:
+        layer_loader_function = self._get_layer_loader_function(layer)
+        if layer_loader_function is None:
+            raise DatasetControllerException(f"No layer loader found for {layer}")
+        try:
+            napari_layer = layer_loader_function(layer)
+        except Exception as e:
+            raise DatasetControllerException(e)
+        return napari_layer
+
+    def save_layer(self, layer: Layer, napari_layer: NapariLayer) -> None:
+        layer_saver_function = self._get_layer_saver_function(layer, napari_layer)
+        if layer_saver_function is None:
+            raise DatasetControllerException(f"No layer saver found for {layer}")
+        try:
+            layer_saver_function(layer, napari_layer)
         except Exception as e:
             raise DatasetControllerException(e)
 
@@ -60,28 +87,37 @@ class DatasetController:
         assert self._viewer is None
         self._viewer = viewer
 
-    def _get_reader_function(
+    def _get_dataset_reader_function(
         self, path: PathLike
-    ) -> Optional[hookspecs.ReaderFunction]:
-        reader_function = self._pm.hook.napari_dataset_get_reader(path=path)
-        return reader_function
+    ) -> Optional[hookspecs.DatasetReaderFunction]:
+        dataset_reader_function = self._pm.hook.napari_dataset_get_dataset_reader(
+            path=path
+        )
+        return dataset_reader_function
 
-    def _get_writer_function(
+    def _get_dataset_writer_function(
         self, path: PathLike, dataset: Dataset
-    ) -> Optional[hookspecs.WriterFunction]:
-        writer_function = self._pm.hook.napari_dataset_get_writer(
+    ) -> Optional[hookspecs.DatasetWriterFunction]:
+        dataset_writer_function = self._pm.hook.napari_dataset_get_dataset_writer(
             path=path, dataset=dataset
         )
-        return writer_function
+        return dataset_writer_function
 
-    # def _on_layers_selection_event(self, event: Event) -> None:
-    #     if not isinstance(event.sources[0], SelectableEventedList):
-    #         return
-    #     if event.type in ("inserted", "removed", "changed"):
-    #         self._viewer.layers.selection.clear()
-    #         for layer in self.layers.selection:
-    #             if layer.loaded and layer.layer in self._viewer.layers:
-    #                 self._viewer.layers.selection.add(layer.layer)
+    def _get_layer_loader_function(
+        self, layer: Layer
+    ) -> Optional[hookspecs.LayerLoaderFunction]:
+        layer_loader_function = self._pm.hook.napari_dataset_get_layer_loader(
+            layer=layer
+        )
+        return layer_loader_function
+
+    def _get_layer_saver_function(
+        self, layer: Layer, napari_layer: NapariLayer
+    ) -> Optional[hookspecs.LayerSaverFunction]:
+        layer_saver_function = self._pm.hook.napari_dataset_get_layer_saver(
+            layer=layer, napari_layer=napari_layer
+        )
+        return layer_saver_function
 
     @property
     def pm(self) -> PluginManager:

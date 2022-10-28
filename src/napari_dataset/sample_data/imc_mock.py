@@ -22,7 +22,7 @@ def make_sample_data():
         with mcd_file.open("wb") as fdst:
             with urlopen(dataset_url) as fsrc:
                 copyfileobj(fsrc, fdst)
-    controller.read(mcd_file)
+    controller.read_dataset(mcd_file)
     viewer = controller.viewer or current_viewer()
     assert viewer is not None
     if controller.viewer != viewer:

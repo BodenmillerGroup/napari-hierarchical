@@ -40,11 +40,11 @@ class QDatasetTreeWidget(QWidget):
     # def _on_image_tree_view_selection_changed(
     #     self, selected: QItemSelection, deselected: QItemSelection
     # ) -> None:
-    #     self._controller.images.selection.clear()
+    #     self._controller.datasets.selection.clear()
     #     self._controller.layers.selection.clear()
     #     for index in self._image_tree_view.selectedIndexes():
-    #         image = index.internalPointer()
-    #         assert isinstance(image, Image)
-    #         self._controller.images.selection.add(image)
-    #         for layer in image.get_layers(recursive=True):
+    #         dataset = index.internalPointer()
+    #         assert isinstance(dataset, Dataset)
+    #         self._controller.datasets.selection.add(dataset)
+    #         for layer in dataset.get_layers(recursive=True):
     #             self._controller.layers.selection.add(layer)
