@@ -18,10 +18,10 @@ class QDatasetsWidget(QWidget):
         super().__init__(parent, flags)
         if controller.viewer != napari_viewer:
             controller.register_viewer(napari_viewer)
-        self._image_tree_widget = QDatasetTreeWidget(controller)
+        self._dataset_tree_widget = QDatasetTreeWidget(controller)
         self._setup_ui()
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout()
-        layout.addWidget(self._image_tree_widget)
+        layout.addWidget(self._dataset_tree_widget)
         self.setLayout(layout)

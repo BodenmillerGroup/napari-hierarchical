@@ -1,5 +1,5 @@
 import pickle
-from typing import Any, Callable, Iterable, List, NamedTuple, Optional
+from typing import Any, Iterable, List, NamedTuple, Optional
 
 from napari.utils.events import Event, EventedList
 from qtpy.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QObject, Qt
@@ -15,7 +15,7 @@ class QDatasetTreeModel(QAbstractItemModel):
         editable: bool
 
     COLUMNS = [
-        Column("name", "Image", True),
+        Column("name", "Dataset", True),
     ]
 
     def __init__(
@@ -23,9 +23,6 @@ class QDatasetTreeModel(QAbstractItemModel):
     ) -> None:
         super().__init__(parent)
         self._controller = controller
-        self._orphan_datasets: List[Dataset] = []
-        self._pending_drop_actions: List[Callable[[], None]] = []
-        self._remaining_removes_before_drop = 0
         self._connect_events()
 
     def __del__(self) -> None:
@@ -128,7 +125,7 @@ class QDatasetTreeModel(QAbstractItemModel):
             datasets = self._controller.datasets
         if 0 <= row <= len(datasets) and count > 0:
             for i in range(row, row + count):
-                dataset = Dataset(name="New Image", parent=parent_dataset)
+                dataset = Dataset(name="New Dataset", parent=parent_dataset)
                 datasets.insert(i, dataset)
             return True
         return False
@@ -144,17 +141,7 @@ class QDatasetTreeModel(QAbstractItemModel):
             datasets = self._controller.datasets
         if 0 <= row < row + count <= len(datasets) and count > 0:
             for _ in range(count):
-                dataset = datasets.pop(row)
-                # prevent Python from garbage-collecting objects that are referenced by
-                # existing QModelIndex instances, but release as much memory as possible
-                self._orphan_datasets.append(dataset)
-            # finish drag and drop action
-            if self._remaining_removes_before_drop > 0:
-                self._remaining_removes_before_drop -= count
-                if self._remaining_removes_before_drop == 0:
-                    while len(self._pending_drop_actions) > 0:
-                        drop_action = self._pending_drop_actions.pop(0)
-                        drop_action()
+                datasets.pop(row)
             return True
         return False
 
@@ -213,17 +200,8 @@ class QDatasetTreeModel(QAbstractItemModel):
                     source_datasets = source_datasets[source_row].children
                     source_row = indices_stack.pop()
                     assert isinstance(source_row, int)
-                index = row + n
-                if datasets == source_datasets and index > source_row:
-                    index -= 1
-                dataset = source_datasets[source_row]
-
-                def drop_action():
-                    datasets.insert(index, dataset)
-                    dataset.parent = parent_dataset
-
-                self._pending_drop_actions.append(drop_action)
-                self._remaining_removes_before_drop += 1
+                dataset = source_datasets[source_row].copy(deep=True)
+                datasets.insert(row + n, dataset)
                 n += 1
             return True
         if data.hasFormat("x-napari-dataset-layer"):
@@ -231,71 +209,64 @@ class QDatasetTreeModel(QAbstractItemModel):
         return False
 
     def _connect_events(self) -> None:
-        for image in self._controller.datasets:
-            self._connect_image_events(image)
+        for dataset in self._controller.datasets:
+            self._connect_dataset_events(dataset)
         self._controller.datasets.events.connect(self._on_datasets_event)
 
     def _disconnect_events(self) -> None:
         self._controller.datasets.events.disconnect(self._on_datasets_event)
-        for image in self._controller.datasets:
-            self._disconnect_image_events(image)
+        for dataset in self._controller.datasets:
+            self._disconnect_dataset_events(dataset)
 
-    def _connect_image_events(self, image: Dataset) -> None:
-        for child_image in image.children:
-            self._connect_image_events(child_image)
-        image.children.events.connect(self._on_datasets_event)
-        image.events.connect(self._on_image_event)
+    def _connect_dataset_events(self, dataset: Dataset) -> None:
+        for child in dataset.children:
+            self._connect_dataset_events(child)
+        dataset.children.events.connect(self._on_datasets_event)
+        dataset.events.connect(self._on_dataset_event)
 
-    def _disconnect_image_events(self, image: Dataset) -> None:
-        image.events.disconnect(self._on_image_event)
-        image.children.events.disconnect(self._on_datasets_event)
-        for child_image in image.children:
-            self._disconnect_image_events(child_image)
+    def _disconnect_dataset_events(self, dataset: Dataset) -> None:
+        dataset.events.disconnect(self._on_dataset_event)
+        dataset.children.events.disconnect(self._on_datasets_event)
+        for child in dataset.children:
+            self._disconnect_dataset_events(child)
 
     def _on_datasets_event(self, event: Event) -> None:
         if not isinstance(event.sources[0], EventedList):
             return
         assert isinstance(event.source, EventedList)
-        if isinstance(event.source, EventedDatasetChildrenList):
-            dataset = event.source.dataset
-            child_datasets = dataset.children
+        datasets = event.source
+        if isinstance(datasets, EventedDatasetChildrenList):
+            parent_dataset = datasets.dataset
         else:
-            dataset = None
-            child_datasets = self._controller.datasets
+            parent_dataset = None
 
         def get_parent():
-            if dataset is not None:
-                if dataset.parent is not None:
-                    parent_row = dataset.parent.children.index(dataset)
+            if parent_dataset is not None:
+                if parent_dataset.parent is not None:
+                    parent_row = parent_dataset.parent.children.index(parent_dataset)
                 else:
-                    parent_row = self._controller.datasets.index(dataset)
-                return self.createIndex(parent_row, 0, object=dataset)
+                    parent_row = self._controller.datasets.index(parent_dataset)
+                return self.createIndex(parent_row, 0, object=parent_dataset)
             return QModelIndex()
 
         if event.type == "inserting":
-            assert isinstance(event.index, int) and 0 <= event.index <= len(
-                child_datasets
-            )
+            assert isinstance(event.index, int) and 0 <= event.index <= len(datasets)
             self.beginInsertRows(get_parent(), event.index, event.index)
         elif event.type == "inserted":
             self.endInsertRows()
             assert isinstance(event.value, Dataset)
-            self._connect_image_events(event.value)
+            self._connect_dataset_events(event.value)
         elif event.type == "removing":
-            assert isinstance(event.index, int) and 0 <= event.index < len(
-                child_datasets
-            )
-            self._disconnect_image_events(child_datasets[event.index])
+            assert isinstance(event.index, int) and 0 <= event.index < len(datasets)
+            self._disconnect_dataset_events(datasets[event.index])
             self.beginRemoveRows(get_parent(), event.index, event.index)
         elif event.type == "removed":
             self.endRemoveRows()
         elif event.type == "moving":
-            assert isinstance(event.index, int) and 0 <= event.index < len(
-                child_datasets
-            )
+            assert isinstance(event.index, int) and 0 <= event.index < len(datasets)
             assert (
                 isinstance(event.new_index, int)
-                and 0 <= event.new_index <= len(child_datasets)
+                and 0 <= event.new_index <= len(datasets)
                 and event.new_index != event.index
             )
             parent = get_parent()
@@ -305,26 +276,22 @@ class QDatasetTreeModel(QAbstractItemModel):
         elif event.type == "moved":
             self.endMoveRows()
         elif event.type == "changed" and isinstance(event.index, int):
-            assert 0 <= event.index < len(child_datasets)
-            left_index = self.createIndex(
-                event.index, 0, object=child_datasets[event.index]
-            )
+            assert 0 <= event.index < len(datasets)
+            left_index = self.createIndex(event.index, 0, object=datasets[event.index])
             right_index = self.createIndex(
-                event.index, len(self.COLUMNS) - 1, object=child_datasets[event.index]
+                event.index, len(self.COLUMNS) - 1, object=datasets[event.index]
             )
             self.dataChanged.emit(left_index, right_index)
         elif event.type in ("changed", "reordered"):
-            top_left_index = self.createIndex(0, 0, object=child_datasets[0])
+            top_left_index = self.createIndex(0, 0, object=datasets[0])
             bottom_right_index = self.createIndex(
-                len(child_datasets) - 1,
-                len(self.COLUMNS) - 1,
-                object=child_datasets[-1],
+                len(datasets) - 1, len(self.COLUMNS) - 1, object=datasets[-1]
             )
             self.dataChanged.emit(top_left_index, bottom_right_index)
 
-    def _on_image_event(self, event: Event) -> None:
+    def _on_dataset_event(self, event: Event) -> None:
+        assert isinstance(event.source, Dataset)
         dataset = event.source
-        assert isinstance(dataset, Dataset)
         column_index = next(
             (i for i, c in enumerate(self.COLUMNS) if c.field == event.type), None
         )
