@@ -5,7 +5,6 @@ from napari.utils.events.containers import EventedDict, EventedList
 from pydantic import Field
 
 
-# do not inherit from napari.utils.tree to avoid conflicts with pydantic-based models
 class Layer(EventedModel):
     name: str
     groups: "EventedLayerGroupsDict" = Field(
@@ -16,6 +15,9 @@ class Layer(EventedModel):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.groups._layer = self
+
+    def __hash__(self) -> int:
+        return id(self)
 
     @property
     def dataset(self) -> "Dataset":
@@ -34,9 +36,9 @@ class EventedLayerGroupsDict(EventedDict[str, str]):
         return self._layer
 
 
+# do not inherit from napari.utils.tree to avoid conflicts with pydantic-based models
 class Dataset(EventedModel):
     name: str
-    # parent: Optional["Dataset"] = None
     layers: "EventedDatasetLayersList" = Field(
         default_factory=lambda: EventedDatasetLayersList()
     )
@@ -53,6 +55,9 @@ class Dataset(EventedModel):
         self.children._dataset = self
         for child in self.children:
             child._parent = self
+
+    def __hash__(self) -> int:
+        return id(self)
 
     def iter_layers(self, recursive: bool = False) -> Generator[Layer, None, None]:
         yield from self.layers
