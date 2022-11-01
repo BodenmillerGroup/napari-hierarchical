@@ -15,7 +15,7 @@ from napari_dataset.model import Dataset, Layer
 
 from ._reader import load_zarr_layer, read_zarr_dataset
 from ._writer import save_zarr_layer, write_zarr_dataset
-from .model import ZarrDataset, ZarrLayer
+from .model import ZarrLayer
 
 try:
     import zarr
@@ -43,7 +43,7 @@ def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunctio
     if (
         available
         and isinstance(layer, ZarrLayer)
-        and ZarrDataset.get_root(layer.dataset)[0] == layer.root_zarr_dataset
+        and layer.dataset.get_root()[0] == layer.root_zarr_dataset
     ):
         return load_zarr_layer
     return None

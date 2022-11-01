@@ -1,4 +1,4 @@
-from typing import Generator, Iterable, Optional
+from typing import Generator, Iterable, List, Optional, Sequence, Tuple
 
 from napari.utils.events import EventedModel
 from napari.utils.events.containers import EventedDict, EventedList
@@ -58,6 +58,14 @@ class Dataset(EventedModel):
 
     def __hash__(self) -> int:
         return id(self)
+
+    def get_root(self) -> Tuple["Dataset", Sequence[str]]:
+        root_dataset = self
+        dataset_names: List[str] = []
+        while root_dataset._parent is not None:
+            dataset_names.insert(0, root_dataset.name)
+            root_dataset = root_dataset._parent
+        return root_dataset, dataset_names
 
     def iter_layers(self, recursive: bool = False) -> Generator[Layer, None, None]:
         yield from self.layers

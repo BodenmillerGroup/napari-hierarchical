@@ -32,17 +32,13 @@ def read_imc_dataset(path: PathLike) -> Dataset:
         for slide in f.slides:
             slide_dataset = IMCSlideDataset(
                 name=f"[S{slide.id:02d}] {slide.description}",
-                parent=imc_dataset,
                 imc_dataset=imc_dataset,
                 slide_id=slide.id,
             )
-            panoramas_dataset = IMCPanoramasDataset(
-                parent=slide_dataset, slide_dataset=slide_dataset
-            )
+            panoramas_dataset = IMCPanoramasDataset(slide_dataset=slide_dataset)
             for panorama in slide.panoramas:
                 panorama_dataset = IMCPanoramaDataset(
                     name=f"[P{panorama.id:02d}] {panorama.description}",
-                    parent=panoramas_dataset,
                     panoramas_dataset=panoramas_dataset,
                     panorama_id=panorama.id,
                 )
@@ -54,13 +50,10 @@ def read_imc_dataset(path: PathLike) -> Dataset:
                 panorama_dataset.layers.append(panorama_layer)
                 panoramas_dataset.children.append(panorama_dataset)
             slide_dataset.children.append(panoramas_dataset)
-            acquisitions_dataset = IMCAcquisitionsDataset(
-                parent=slide_dataset, slide_dataset=slide_dataset
-            )
+            acquisitions_dataset = IMCAcquisitionsDataset(slide_dataset=slide_dataset)
             for acquisition in slide.acquisitions:
                 acquisition_dataset = IMCAcquisitionDataset(
                     name=f"[A{acquisition.id:02d}] {acquisition.description}",
-                    parent=acquisitions_dataset,
                     acquisitions_dataset=acquisitions_dataset,
                     acquisition_id=acquisition.id,
                 )

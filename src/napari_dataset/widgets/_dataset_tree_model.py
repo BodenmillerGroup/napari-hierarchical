@@ -125,7 +125,7 @@ class QDatasetTreeModel(QAbstractItemModel):
             datasets = self._controller.datasets
         if 0 <= row <= len(datasets) and count > 0:
             for i in range(row, row + count):
-                dataset = Dataset(name="New Dataset", parent=parent_dataset)
+                dataset = Dataset(name="New Dataset")
                 datasets.insert(i, dataset)
             return True
         return False

@@ -15,7 +15,7 @@ from napari_dataset.model import Dataset, Layer
 
 from ._reader import load_hdf5_layer, read_hdf5_dataset
 from ._writer import save_hdf5_layer, write_hdf5_dataset
-from .model import HDF5Dataset, HDF5Layer
+from .model import HDF5Layer
 
 try:
     import h5py
@@ -43,7 +43,7 @@ def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunctio
     if (
         available
         and isinstance(layer, HDF5Layer)
-        and HDF5Dataset.get_root(layer.dataset)[0] == layer.root_hdf5_dataset
+        and layer.dataset.get_root()[0] == layer.root_hdf5_dataset
     ):
         return load_hdf5_layer
     return None
