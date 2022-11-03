@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional, Union
+from typing import Optional, Set, Union
 
 from bidict import bidict
 from napari.layers import Layer as NapariLayer
@@ -145,11 +145,11 @@ class DatasetController:
             self._viewer is not None
             and not self._ignore_layers_selection_changed_events
         ):
-            selected_napari_layers: List[NapariLayer] = []
+            selected_napari_layers: Set[NapariLayer] = set()
             for layer in self._layers.selection:
                 selected_napari_layer = self._napari_layers.get(layer)
                 if selected_napari_layer is not None:
-                    selected_napari_layers.append(selected_napari_layer)
+                    selected_napari_layers.add(selected_napari_layer)
             self._ignore_viewer_layers_selection_changed_events = True
             try:
                 self._viewer.layers.selection = selected_napari_layers
@@ -161,11 +161,11 @@ class DatasetController:
             self._viewer is not None
             and not self._ignore_viewer_layers_selection_changed_events
         ):
-            selected_layers: List[Layer] = []
+            selected_layers: Set[Layer] = set()
             for napari_layer in self._viewer.layers.selection:
                 selected_layer = self._napari_layers.inverse.get(napari_layer)
                 if selected_layer is not None:
-                    selected_layers.append(selected_layer)
+                    selected_layers.add(selected_layer)
             self._ignore_layers_selection_changed_events = True
             try:
                 self._layers.selection = selected_layers

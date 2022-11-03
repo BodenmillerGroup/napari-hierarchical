@@ -1,7 +1,7 @@
 from typing import Callable, Optional, Set
 
 from napari.utils.events import Event
-from qtpy.QtCore import QItemSelection
+from qtpy.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange
 from qtpy.QtWidgets import QListView, QWidget
 
 from .._controller import DatasetController
@@ -19,6 +19,8 @@ class QLayerGroupingListView(QListView):
     ) -> None:
         super().__init__(parent)
         self._controller = controller
+        self._grouping = grouping
+        self._close_callback = close_callback
         self._model = QLayerGroupingListModel(
             controller, grouping=grouping, close_callback=close_callback
         )
@@ -58,8 +60,20 @@ class QLayerGroupingListView(QListView):
 
     def _on_layers_selection_changed_event(self, event: Event) -> None:
         if not self._ignore_layers_selection_changed_events:
+            selection = QItemSelection()
+            selected_groups = []
+            for selected_layer in self._controller.layers.selection:
+                if self._grouping in selected_layer.groups:
+                    selected_group = selected_layer.groups[self._grouping]
+                    if selected_group not in selected_groups:
+                        row = self._model.groups.index(selected_group)
+                        index = self._model.createIndex(row, 0)
+                        selection.append(QItemSelectionRange(index))
+                        selected_groups.append(selected_group)
             self._ignore_selection_changed = True
             try:
-                self.selectionModel().clear()
+                self.selectionModel().select(
+                    selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
+                )
             finally:
                 self._ignore_selection_changed = False

@@ -1,7 +1,7 @@
 from typing import Optional, Set
 
 from napari.utils.events import Event
-from qtpy.QtCore import QItemSelection
+from qtpy.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange
 from qtpy.QtWidgets import QTreeView, QWidget
 
 from .._controller import DatasetController
@@ -58,8 +58,20 @@ class QDatasetTreeView(QTreeView):
 
     def _on_layers_selection_changed_event(self, event: Event) -> None:
         if not self._ignore_layer_selection_changed_events:
+            selection = QItemSelection()
+            for selected_layer in self._controller.layers.selection:
+                if selected_layer.dataset.parent is not None:
+                    row = selected_layer.dataset.parent.children.index(
+                        selected_layer.dataset
+                    )
+                else:
+                    row = self._controller.datasets.index(selected_layer.dataset)
+                index = self._model.createIndex(row, 0, object=selected_layer.dataset)
+                selection.append(QItemSelectionRange(index))
             self._ignore_selection_changed = True
             try:
-                self.selectionModel().clear()
+                self.selectionModel().select(
+                    selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
+                )
             finally:
                 self._ignore_selection_changed = False
