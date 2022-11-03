@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Set, Union
+from typing import List, Optional, Union
 
 from bidict import bidict
 from napari.layers import Layer as NapariLayer
@@ -27,6 +27,8 @@ class DatasetController:
             basetype=Layer, lookup={str: lambda layer: layer.name}
         )
         self._napari_layers: bidict[Layer, NapariLayer] = bidict()
+        self._ignore_viewer_layers_selection_changed_events = False
+        self._ignore_layers_selection_changed_events = False
         self._layers.selection.events.changed.connect(
             self._on_layers_selection_changed_event
         )
@@ -138,55 +140,37 @@ class DatasetController:
         )
         return layer_saver_function
 
-    # TODO do not rely on delta for selection, but replace selection instead!
-
     def _on_layers_selection_changed_event(self, event: Event) -> None:
-        if self._viewer is not None:
-            added_napari_layers = set()
-            assert isinstance(event.added, Set) or len(event.added) == 0
-            for added_layer in event.added:
-                assert isinstance(added_layer, Layer)
-                added_napari_layer = self._napari_layers.get(added_layer)
-                if (
-                    added_napari_layer is not None
-                    and added_napari_layer not in self._viewer.layers.selection
-                ):
-                    added_napari_layers.add(added_napari_layer)
-            removed_napari_layers = set()
-            assert isinstance(event.removed, Set) or len(event.removed) == 0
-            for removed_layer in event.removed:
-                assert isinstance(removed_layer, Layer)
-                removed_napari_layer = self._napari_layers.get(removed_layer)
-                if (
-                    removed_napari_layer is not None
-                    and removed_napari_layer in self._viewer.layers.selection
-                ):
-                    removed_napari_layers.add(removed_napari_layer)
-            assert not set.intersection(added_napari_layers, removed_napari_layers)
-            napari_layers = set.union(added_napari_layers, removed_napari_layers)
-            if len(napari_layers) > 0:
-                self._viewer.layers.selection.symmetric_difference_update(napari_layers)
+        if (
+            self._viewer is not None
+            and not self._ignore_layers_selection_changed_events
+        ):
+            selected_napari_layers: List[NapariLayer] = []
+            for layer in self._layers.selection:
+                selected_napari_layer = self._napari_layers.get(layer)
+                if selected_napari_layer is not None:
+                    selected_napari_layers.append(selected_napari_layer)
+            self._ignore_viewer_layers_selection_changed_events = True
+            try:
+                self._viewer.layers.selection = selected_napari_layers
+            finally:
+                self._ignore_viewer_layers_selection_changed_events = False
 
     def _on_viewer_layers_selection_changed_event(self, event: Event) -> None:
-        if self._viewer is not None:
-            added_layers = set()
-            assert isinstance(event.added, Set) or len(event.added) == 0
-            for added_napari_layer in event.added:
-                assert isinstance(added_napari_layer, NapariLayer)
-                added_layer = self._napari_layers.inverse.get(added_napari_layer)
-                if added_layer is not None and added_layer not in self.layers.selection:
-                    added_layers.add(added_layer)
-            removed_layers = set()
-            assert isinstance(event.removed, Set) or len(event.removed) == 0
-            for removed_napari_layer in event.removed:
-                assert isinstance(removed_napari_layer, NapariLayer)
-                removed_layer = self._napari_layers.inverse.get(removed_napari_layer)
-                if removed_layer is not None and removed_layer in self.layers.selection:
-                    removed_layers.add(removed_layer)
-            assert not set.intersection(added_layers, removed_layers)
-            layers = set.union(added_layers, removed_layers)
-            if len(layers) > 0:
-                self.layers.selection.symmetric_difference_update(layers)
+        if (
+            self._viewer is not None
+            and not self._ignore_viewer_layers_selection_changed_events
+        ):
+            selected_layers: List[Layer] = []
+            for napari_layer in self._viewer.layers.selection:
+                selected_layer = self._napari_layers.inverse.get(napari_layer)
+                if selected_layer is not None:
+                    selected_layers.append(selected_layer)
+            self._ignore_layers_selection_changed_events = True
+            try:
+                self._layers.selection = selected_layers
+            finally:
+                self._ignore_layers_selection_changed_events = False
 
     @property
     def pm(self) -> PluginManager:
