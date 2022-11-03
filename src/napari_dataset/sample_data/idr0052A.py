@@ -29,9 +29,7 @@ def make_sample_data():
     if controller.viewer != viewer:
         controller.register_viewer(viewer)
     viewer.window.add_plugin_dock_widget("napari-dataset", widget_name="datasets")
-    viewer.window.add_plugin_dock_widget(
-        "napari-dataset", widget_name="layer groupings"
-    )
+    viewer.window.add_plugin_dock_widget("napari-dataset", widget_name="layers")
     return []
 
 

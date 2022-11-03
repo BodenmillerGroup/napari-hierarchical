@@ -8,9 +8,9 @@ contributions:
     - id: napari-dataset.make_datasets_widget
       python_name: napari_dataset.widgets:QDatasetsWidget
       title: Make napari-dataset datasets widget
-    - id: napari-dataset.make_layer_groupings_widget
-      python_name: napari_dataset.widgets:QLayerGroupingsWidget
-      title: Make napari-dataset layer groupings widget
+    - id: napari-dataset.make_layers_widget
+      python_name: napari_dataset.widgets:QLayersWidget
+      title: Make napari-dataset layers widget
     - id: napari-dataset.sample_data.imc_mock
       python_name: napari_dataset.sample_data.imc_mock:make_sample_data
       title: Make IMC mock sample data
@@ -30,8 +30,8 @@ contributions:
   widgets:
     - command: napari-dataset.make_datasets_widget
       display_name: datasets
-    - command: napari-dataset.make_layer_groupings_widget
-      display_name: layer groupings
+    - command: napari-dataset.make_layers_widget
+      display_name: layers
   sample_data:
     - key: imc_mock
       display_name: IMC mock dataset (Bodenmiller group, University of Zurich)

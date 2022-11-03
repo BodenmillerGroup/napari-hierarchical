@@ -1,15 +1,17 @@
 from ._dataset_tree_model import QDatasetTreeModel
-from ._dataset_tree_widget import QDatasetTreeWidget
+from ._dataset_tree_view import QDatasetTreeView
 from ._datasets_widget import QDatasetsWidget
 from ._layer_grouping_list_model import QLayerGroupingListModel
-from ._layer_grouping_list_widget import QLayerGroupingListWidget
-from ._layer_groupings_widget import QLayerGroupingsWidget
+from ._layer_grouping_list_view import QLayerGroupingListView
+from ._layer_groupings_tab_widget import QLayerGroupingsTabWidget
+from ._layers_widget import QLayersWidget
 
 __all__ = [
     "QDatasetTreeModel",
-    "QDatasetTreeWidget",
+    "QDatasetTreeView",
     "QDatasetsWidget",
     "QLayerGroupingListModel",
-    "QLayerGroupingListWidget",
-    "QLayerGroupingsWidget",
+    "QLayerGroupingListView",
+    "QLayerGroupingsTabWidget",
+    "QLayersWidget",
 ]
