@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from typing import Optional, Union
 
-from napari.layers import Layer as NapariLayer
 from pluggy import HookimplMarker
 
 from napari_dataset.hookspecs import (
@@ -43,7 +42,7 @@ def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunctio
     if available and isinstance(layer, ZarrLayer):
         dataset = layer.get_parent()
         assert dataset is not None
-        if dataset.get_root()[0] == layer._root_zarr_dataset:
+        if dataset.get_root()[0] == layer.root_zarr_dataset:
             return load_zarr_layer
     return None
 
@@ -56,9 +55,7 @@ def napari_dataset_get_dataset_writer(
 
 
 @hookimpl
-def napari_dataset_get_layer_saver(
-    layer: Layer, napari_layer: NapariLayer
-) -> Optional[LayerSaverFunction]:
+def napari_dataset_get_layer_saver(layer: Layer) -> Optional[LayerSaverFunction]:
     return None  # TODO
 
 

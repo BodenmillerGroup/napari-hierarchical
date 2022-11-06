@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Union
 
 from napari.layers import Image as NapariImageLayer
-from napari.layers import Layer as NapariLayer
 
 from napari_dataset.model import Dataset, Layer
 
@@ -81,19 +80,19 @@ def read_imc_dataset(path: PathLike) -> Dataset:
     return imc_dataset
 
 
-def load_imc_panorama_layer(layer: Layer) -> NapariLayer:
+def load_imc_panorama_layer(layer: Layer) -> None:
     if not isinstance(layer, IMCPanoramaLayer):
         raise TypeError(f"Not an IMC Panorama layer: {layer}")
-    panorama_dataset = layer._panorama_dataset
+    panorama_dataset = layer.panorama_dataset
     if layer.get_parent() != panorama_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    panoramas_dataset = panorama_dataset._panoramas_dataset
+    panoramas_dataset = panorama_dataset.panoramas_dataset
     if panorama_dataset.get_parent() != panoramas_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    slide_dataset = panoramas_dataset._slide_dataset
+    slide_dataset = panoramas_dataset.slide_dataset
     if panoramas_dataset.get_parent() != slide_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    imc_dataset = slide_dataset._imc_dataset
+    imc_dataset = slide_dataset.imc_dataset
     if (
         slide_dataset.get_parent() != imc_dataset
         or imc_dataset.get_parent() is not None
@@ -107,22 +106,22 @@ def load_imc_panorama_layer(layer: Layer) -> NapariLayer:
             if panorama.id == panorama_dataset.panorama_id
         )
         data = f.read_panorama(panorama)
-    return NapariImageLayer(name=layer.name, data=data)  # TODO transform
+    layer.napari_layer = NapariImageLayer(name=layer.name, data=data)  # TODO transform
 
 
-def load_imc_acquisition_layer(layer: Layer) -> NapariLayer:
+def load_imc_acquisition_layer(layer: Layer) -> None:
     if not isinstance(layer, IMCAcquisitionLayer):
         raise TypeError(f"Not an IMC Acquisition layer: {layer}")
-    acquisition_dataset = layer._acquisition_dataset
+    acquisition_dataset = layer.acquisition_dataset
     if layer.get_parent() != acquisition_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    acquisitions_dataset = acquisition_dataset._acquisitions_dataset
+    acquisitions_dataset = acquisition_dataset.acquisitions_dataset
     if acquisition_dataset.get_parent() != acquisitions_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    slide_dataset = acquisitions_dataset._slide_dataset
+    slide_dataset = acquisitions_dataset.slide_dataset
     if acquisitions_dataset.get_parent() != slide_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    imc_dataset = slide_dataset._imc_dataset
+    imc_dataset = slide_dataset.imc_dataset
     if (
         slide_dataset.get_parent() != imc_dataset
         or imc_dataset.get_parent() is not None
@@ -137,4 +136,4 @@ def load_imc_acquisition_layer(layer: Layer) -> NapariLayer:
             if acquisition.id == acquisition_dataset.acquisition_id
         )
         data = f.read_acquisition(acquisition)[layer.channel_index]
-    return NapariImageLayer(name=layer.name, data=data)  # TODO transform
+    layer.napari_layer = NapariImageLayer(name=layer.name, data=data)  # TODO transform

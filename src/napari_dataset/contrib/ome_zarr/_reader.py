@@ -5,7 +5,6 @@ from typing import Generator, Union
 import numpy as np
 from napari.layers import Image as NapariImageLayer
 from napari.layers import Labels as NapariLabelsLayer
-from napari.layers import Layer as NapariLayer
 
 from napari_dataset.model import Dataset, Layer
 
@@ -32,10 +31,10 @@ def read_ome_zarr_dataset(path: PathLike) -> Dataset:
     return ome_zarr_dataset
 
 
-def load_ome_zarr_image_layer(layer: Layer) -> NapariLayer:
+def load_ome_zarr_image_layer(layer: Layer) -> None:
     if not isinstance(layer, OMEZarrImageLayer):
         raise TypeError(f"Not an OME-Zarr Image layer: {layer}")
-    ome_zarr_dataset = layer._ome_zarr_dataset
+    ome_zarr_dataset = layer.ome_zarr_dataset
     if layer.get_parent() != ome_zarr_dataset:
         raise ValueError(f"Not part of original OME-Zarr dataset: {layer}")
     zarr_location = ZarrLocation(ome_zarr_dataset.ome_zarr_file)
@@ -45,14 +44,13 @@ def load_ome_zarr_image_layer(layer: Layer) -> NapariLayer:
     data = [multiscales.array(resolution, "") for resolution in multiscales.datasets]
     if layer.channel_axis is not None and layer.channel_index is not None:
         data = [np.take(a, layer.channel_index, axis=layer.channel_axis) for a in data]
-    napari_layer = NapariImageLayer(name=layer.name, data=data, multiscale=True)
-    return napari_layer
+    layer.napari_layer = NapariImageLayer(name=layer.name, data=data, multiscale=True)
 
 
-def load_ome_zarr_labels_layer(layer: Layer) -> NapariLayer:
+def load_ome_zarr_labels_layer(layer: Layer) -> None:
     if not isinstance(layer, OMEZarrLabelsLayer):
         raise TypeError(f"Not an OME-Zarr Labels layer: {layer}")
-    ome_zarr_dataset = layer._ome_zarr_dataset
+    ome_zarr_dataset = layer.ome_zarr_dataset
     if layer.get_parent() != ome_zarr_dataset:
         raise ValueError(f"Not part of original OME-Zarr dataset: {layer}")
     zarr_location = ZarrLocation(ome_zarr_dataset.ome_zarr_file)
@@ -65,8 +63,7 @@ def load_ome_zarr_labels_layer(layer: Layer) -> NapariLayer:
         label_multiscales.array(resolution, "")
         for resolution in label_multiscales.datasets
     ]
-    napari_layer = NapariLabelsLayer(name=layer.name, data=data, multiscale=True)
-    return napari_layer
+    layer.napari_layer = NapariLabelsLayer(name=layer.name, data=data, multiscale=True)
 
 
 def _create_ome_zarr_image_layers(

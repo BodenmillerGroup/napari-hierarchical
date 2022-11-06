@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from typing import Optional, Union
 
-from napari.layers import Layer as NapariLayer
 from pluggy import HookimplMarker
 
 from napari_dataset.contrib.ome_zarr.model import OMEZarrImageLayer, OMEZarrLabelsLayer
@@ -55,15 +54,15 @@ def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunctio
     if (
         available
         and isinstance(layer, OMEZarrImageLayer)
-        and layer.get_parent() == layer._ome_zarr_dataset
-        and layer._ome_zarr_dataset.get_parent() is None
+        and layer.get_parent() == layer.ome_zarr_dataset
+        and layer.ome_zarr_dataset.get_parent() is None
     ):
         return load_ome_zarr_image_layer
     if (
         available
         and isinstance(layer, OMEZarrLabelsLayer)
-        and layer.get_parent() == layer._ome_zarr_dataset
-        and layer._ome_zarr_dataset.get_parent() is None
+        and layer.get_parent() == layer.ome_zarr_dataset
+        and layer.ome_zarr_dataset.get_parent() is None
     ):
         return load_ome_zarr_labels_layer
     return None
@@ -77,9 +76,7 @@ def napari_dataset_get_dataset_writer(
 
 
 @hookimpl
-def napari_dataset_get_layer_saver(
-    layer: Layer, napari_layer: NapariLayer
-) -> Optional[LayerSaverFunction]:
+def napari_dataset_get_layer_saver(layer: Layer) -> Optional[LayerSaverFunction]:
     return None  # TODO
 
 

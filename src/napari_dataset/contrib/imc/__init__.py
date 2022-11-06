@@ -38,16 +38,16 @@ def napari_dataset_get_dataset_reader(
 @hookimpl
 def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunction]:
     if available and isinstance(layer, IMCPanoramaLayer):
-        panorama_dataset = layer._panorama_dataset
+        panorama_dataset = layer.panorama_dataset
         if layer.get_parent() != panorama_dataset:
             return None
-        panoramas_dataset = panorama_dataset._panoramas_dataset
+        panoramas_dataset = panorama_dataset.panoramas_dataset
         if panorama_dataset.get_parent() != panoramas_dataset:
             return None
-        slide_dataset = panoramas_dataset._slide_dataset
+        slide_dataset = panoramas_dataset.slide_dataset
         if panoramas_dataset.get_parent() != slide_dataset:
             return None
-        imc_dataset = slide_dataset._imc_dataset
+        imc_dataset = slide_dataset.imc_dataset
         if (
             slide_dataset.get_parent() != imc_dataset
             or imc_dataset.get_parent() is not None
@@ -55,16 +55,16 @@ def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunctio
             return None
         return load_imc_panorama_layer
     if available and isinstance(layer, IMCAcquisitionLayer):
-        acquisition_dataset = layer._acquisition_dataset
+        acquisition_dataset = layer.acquisition_dataset
         if layer.get_parent() != acquisition_dataset:
             return None
-        acquisitions_dataset = acquisition_dataset._acquisitions_dataset
+        acquisitions_dataset = acquisition_dataset.acquisitions_dataset
         if acquisition_dataset.get_parent() != acquisitions_dataset:
             return None
-        slide_dataset = acquisitions_dataset._slide_dataset
+        slide_dataset = acquisitions_dataset.slide_dataset
         if acquisitions_dataset.get_parent() != slide_dataset:
             return None
-        imc_dataset = slide_dataset._imc_dataset
+        imc_dataset = slide_dataset.imc_dataset
         if (
             slide_dataset.get_parent() != imc_dataset
             or imc_dataset.get_parent() is not None

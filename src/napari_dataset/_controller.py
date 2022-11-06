@@ -1,14 +1,12 @@
 import os
 from typing import Optional, Set, Union
 
-from bidict import bidict
 from napari.layers import Layer as NapariLayer
 from napari.utils.events import Event, EventedList, SelectableEventedList
 from napari.viewer import Viewer
 from pluggy import PluginManager
 
 from . import hookspecs
-from ._exceptions import DatasetException
 from .model import Dataset, Layer
 
 PathLike = Union[str, os.PathLike]
@@ -29,7 +27,6 @@ class DatasetController:
         self._current_layers: SelectableEventedList[Layer] = SelectableEventedList(
             basetype=Layer, lookup={str: lambda layer: layer.name}
         )
-        self._napari_layers: bidict[Layer, NapariLayer] = bidict()
         self._ignore_viewer_layers_selection_changed_events = False
         self._ignore_current_layers_selection_changed_events = False
         self._datasets.events.connect(self._on_datasets_event)
@@ -63,8 +60,8 @@ class DatasetController:
         layer_loader_function = self._get_layer_loader_function(layer)
         return layer_loader_function is not None
 
-    def can_save_layer(self, layer: Layer, napari_layer: NapariLayer) -> bool:
-        layer_saver_function = self._get_layer_saver_function(layer, napari_layer)
+    def can_save_layer(self, layer: Layer) -> bool:
+        layer_saver_function = self._get_layer_saver_function(layer)
         return layer_saver_function is not None
 
     def read_dataset(self, path: PathLike) -> Dataset:
@@ -92,22 +89,21 @@ class DatasetController:
         if layer_loader_function is None:
             raise DatasetControllerException(f"No layer loader found for {layer}")
         try:
-            napari_layer = layer_loader_function(layer)
+            layer_loader_function(layer)
         except Exception as e:
             raise DatasetControllerException(e)
-        self._napari_layers[layer] = napari_layer
-        assert self._viewer is not None
-        self._viewer.add_layer(napari_layer)
+        if layer.napari_layer is not None:
+            assert self._viewer is not None
+            self._viewer.add_layer(layer.napari_layer)
 
     def save_layer(self, layer: Layer) -> None:
-        napari_layer = self._napari_layers.get(layer)
-        if napari_layer is None:
+        if layer.napari_layer is None:
             raise DatasetControllerException(f"Layer is not loaded: {layer}")
-        layer_saver_function = self._get_layer_saver_function(layer, napari_layer)
+        layer_saver_function = self._get_layer_saver_function(layer)
         if layer_saver_function is None:
             raise DatasetControllerException(f"No layer saver found for {layer}")
         try:
-            layer_saver_function(layer, napari_layer)
+            layer_saver_function(layer)
         except Exception as e:
             raise DatasetControllerException(e)
 
@@ -136,11 +132,9 @@ class DatasetController:
         return layer_loader_function
 
     def _get_layer_saver_function(
-        self, layer: Layer, napari_layer: NapariLayer
+        self, layer: Layer
     ) -> Optional[hookspecs.LayerSaverFunction]:
-        layer_saver_function = self._pm.hook.napari_dataset_get_layer_saver(
-            layer=layer, napari_layer=napari_layer
-        )
+        layer_saver_function = self._pm.hook.napari_dataset_get_layer_saver(layer=layer)
         return layer_saver_function
 
     def _on_datasets_event(self, event: Event) -> None:
@@ -181,9 +175,11 @@ class DatasetController:
             new_viewer_layers_selection: Set[NapariLayer] = set()
             for layer in self._current_layers.selection:
                 assert isinstance(layer, Layer)
-                napari_layer = self._napari_layers.get(layer)
-                if napari_layer is not None and napari_layer in self._viewer.layers:
-                    new_viewer_layers_selection.add(napari_layer)
+                if (
+                    layer.napari_layer is not None
+                    and layer.napari_layer in self._viewer.layers
+                ):
+                    new_viewer_layers_selection.add(layer.napari_layer)
             self._ignore_viewer_layers_selection_changed_events = True
             try:
                 self._viewer.layers.selection = new_viewer_layers_selection
@@ -198,7 +194,15 @@ class DatasetController:
             new_current_layers_selection: Set[Layer] = set()
             for napari_layer in self._viewer.layers.selection:
                 assert isinstance(napari_layer, NapariLayer)
-                layer = self._napari_layers.inverse.get(napari_layer)
+                layer = next(
+                    (
+                        layer
+                        for dataset in self._datasets
+                        for layer in dataset.iter_layers(recursive=True)
+                        if layer.napari_layer == napari_layer
+                    ),
+                    None,
+                )
                 if layer is not None and layer in self._current_layers:
                     new_current_layers_selection.add(layer)
             self._ignore_current_layers_selection_changed_events = True
@@ -228,7 +232,7 @@ class DatasetController:
         return self._current_layers
 
 
-class DatasetControllerException(DatasetException):
+class DatasetControllerException(Exception):
     pass
 
 

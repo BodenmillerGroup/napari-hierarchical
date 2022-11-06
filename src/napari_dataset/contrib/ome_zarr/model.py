@@ -8,11 +8,11 @@ class OMEZarrDataset(Dataset):
 
 
 class OMEZarrImageLayer(Layer):
+    ome_zarr_dataset: OMEZarrDataset
     channel_axis: Optional[int] = None
     channel_index: Optional[int] = None
-    _ome_zarr_dataset: OMEZarrDataset
 
 
 class OMEZarrLabelsLayer(Layer):
+    ome_zarr_dataset: OMEZarrDataset
     label_name: str
-    _ome_zarr_dataset: OMEZarrDataset

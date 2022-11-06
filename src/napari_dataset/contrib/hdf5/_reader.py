@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Sequence, Union
 
 from napari.layers import Image as NapariImageLayer
-from napari.layers import Layer as NapariLayer
 
 from napari_dataset.model import Dataset, Layer
 
@@ -38,19 +37,18 @@ def read_hdf5_dataset(path: PathLike) -> Dataset:
     return root_dataset
 
 
-def load_hdf5_layer(layer: Layer) -> NapariLayer:
+def load_hdf5_layer(layer: Layer) -> None:
     if not isinstance(layer, HDF5Layer):
         raise TypeError(f"Not an HDF5 layer: {layer}")
     dataset = layer.get_parent()
     assert dataset is not None
     root_hdf5_dataset, hdf5_names = dataset.get_root()
-    if root_hdf5_dataset != layer._root_hdf5_dataset:
+    if root_hdf5_dataset != layer.root_hdf5_dataset:
         raise ValueError(f"Not part of original HDF5 dataset: {layer}")
     assert isinstance(root_hdf5_dataset, HDF5Dataset)
     with h5py.File(root_hdf5_dataset.hdf5_file) as f:
         data = da.from_array(f["/".join(hdf5_names)])
-    napari_layer = NapariImageLayer(name=layer.name, data=data)
-    return napari_layer
+    layer.napari_layer = NapariImageLayer(name=layer.name, data=data)
 
 
 def _create_hdf5_group_dataset(

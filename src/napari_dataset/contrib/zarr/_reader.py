@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Union
 
 from napari.layers import Image as NapariImageLayer
-from napari.layers import Layer as NapariLayer
 
 from napari_dataset.model import Dataset, Layer
 
@@ -41,19 +40,18 @@ def read_zarr_dataset(path: PathLike) -> Dataset:
     return root_dataset
 
 
-def load_zarr_layer(layer: Layer) -> NapariLayer:
+def load_zarr_layer(layer: Layer) -> None:
     if not isinstance(layer, ZarrLayer):
         raise TypeError(f"Not a Zarr layer: {layer}")
     dataset = layer.get_parent()
     assert dataset is not None
     root_zarr_dataset, zarr_names = dataset.get_root()
-    if root_zarr_dataset != layer._root_zarr_dataset:
+    if root_zarr_dataset != layer.root_zarr_dataset:
         raise ValueError(f"Not part of original Zarr dataset: {layer}")
     assert isinstance(root_zarr_dataset, ZarrDataset)
     z = zarr.open(store=root_zarr_dataset.zarr_file, mode="r")
     data = da.from_zarr(z["/".join(zarr_names)])
-    napari_layer = NapariImageLayer(name=layer.name, data=data)
-    return napari_layer
+    layer.napari_layer = NapariImageLayer(name=layer.name, data=data)
 
 
 def _create_zarr_group_dataset(

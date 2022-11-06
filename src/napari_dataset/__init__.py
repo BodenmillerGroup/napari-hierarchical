@@ -4,7 +4,6 @@ except ImportError:
     __version__ = "unknown"
 
 from ._controller import DatasetController, DatasetControllerException, controller
-from ._exceptions import DatasetException
 from ._reader import napari_get_reader
 from .contrib import hdf5, imc, ome_zarr, zarr
 
@@ -21,6 +20,5 @@ __all__ = [
     "controller",
     "DatasetController",
     "DatasetControllerException",
-    "DatasetException",
     "napari_get_reader",
 ]
