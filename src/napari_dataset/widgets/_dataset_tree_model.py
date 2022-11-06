@@ -50,13 +50,7 @@ class QDatasetTreeModel(QAbstractItemModel):
             assert isinstance(dataset, Dataset)
             parent_dataset = dataset.get_parent()
             if parent_dataset is not None:
-                grand_parent_dataset = parent_dataset.get_parent()
-                if grand_parent_dataset is not None:
-                    parent_datasets = grand_parent_dataset.children
-                else:
-                    parent_datasets = self._controller.datasets
-                parent_row = parent_datasets.index(parent_dataset)
-                return self.createIndex(parent_row, 0, object=parent_dataset)
+                return self.create_dataset_index(parent_dataset)
         return QModelIndex()
 
     def rowCount(self, index: QModelIndex = QModelIndex()) -> int:
@@ -216,6 +210,15 @@ class QDatasetTreeModel(QAbstractItemModel):
             return True
         return False
 
+    def create_dataset_index(self, dataset: Dataset, column: int = 0) -> QModelIndex:
+        parent_dataset = dataset.get_parent()
+        if parent_dataset is not None:
+            parent_datasets = parent_dataset.children
+        else:
+            parent_datasets = self._controller.datasets
+        row = parent_datasets.index(dataset)
+        return self.createIndex(row, column, object=dataset)
+
     def _connect_events(self) -> None:
         self._controller.datasets.events.connect(self._on_datasets_event)
         for dataset in self._controller.datasets:
@@ -256,13 +259,7 @@ class QDatasetTreeModel(QAbstractItemModel):
             if isinstance(datasets, NestedParentAwareEventedModelList):
                 parent_dataset = datasets.get_parent()
                 assert isinstance(parent_dataset, Dataset)
-                grand_parent_dataset = parent_dataset.get_parent()
-                if grand_parent_dataset is not None:
-                    parent_datasets = grand_parent_dataset.children
-                else:
-                    parent_datasets = self._controller.datasets
-                parent_row = parent_datasets.index(parent_dataset)
-                return self.createIndex(parent_row, 0, object=parent_dataset)
+                return self.create_dataset_index(parent_dataset)
             return QModelIndex()
 
         if event.type == "inserting":
@@ -331,7 +328,7 @@ class QDatasetTreeModel(QAbstractItemModel):
 
     def _on_dataset_nested_event(self, event: Event) -> None:
         assert isinstance(event.source_event, Event)
-        column_index = next(
+        column = next(
             (
                 column_index
                 for column_index, column in enumerate(self.COLUMNS)
@@ -339,14 +336,8 @@ class QDatasetTreeModel(QAbstractItemModel):
             ),
             None,
         )
-        if column_index is not None:
+        if column is not None:
             dataset = event.source_event.source
             assert isinstance(dataset, Dataset)
-            parent_dataset = dataset.get_parent()
-            if parent_dataset is not None:
-                datasets = parent_dataset.children
-            else:
-                datasets = self._controller.datasets
-            row = datasets.index(dataset)
-            index = self.createIndex(row, column_index, object=dataset)
+            index = self.create_dataset_index(dataset, column=column)
             self.dataChanged.emit(index, index)

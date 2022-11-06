@@ -70,13 +70,7 @@ class QDatasetTreeView(QTreeView):
             new_item_selection = QItemSelection()
             for dataset in self._controller.selected_datasets:
                 assert isinstance(dataset, Dataset)
-                parent_dataset = dataset.get_parent()
-                if parent_dataset is not None:
-                    datasets = parent_dataset.children
-                else:
-                    datasets = self._controller.datasets
-                row = datasets.index(dataset)
-                index = self._model.createIndex(row, 0, object=dataset)
+                index = self._model.create_dataset_index(dataset)
                 new_item_selection.append(QItemSelectionRange(index))
             self._ignore_selection_changed = True
             try:
