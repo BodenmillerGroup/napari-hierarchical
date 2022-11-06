@@ -67,7 +67,7 @@ class Layer(ParentAwareEventedModel[Dataset]):
     groups: ParentAwareEventedModelDict["Layer", str, str] = Field(
         default_factory=lambda: ParentAwareEventedModelDict(basetype=str)
     )  # grouping --> group
-    napari_layer: Optional[NapariLayer] = None
+    napari_layer: Optional[NapariLayer] = Field(default=None, exclude=True)
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -78,8 +78,3 @@ class Layer(ParentAwareEventedModel[Dataset]):
 
     def __repr__(self) -> str:
         return self.name
-
-    def copy(self, *args, **kwargs) -> "Layer":
-        layer_copy = super().copy(*args, **kwargs)
-        layer_copy.napari_layer = self.napari_layer
-        return layer_copy
