@@ -37,44 +37,39 @@ def napari_dataset_get_dataset_reader(
 
 @hookimpl
 def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunction]:
-    x = layer
-    if (
-        available
-        and isinstance(x, IMCPanoramaLayer)
-        and x.dataset == x.panorama_dataset
-        and x.panorama_dataset.parent == x.panorama_dataset.panoramas_dataset
-        and (
-            x.panorama_dataset.panoramas_dataset.parent
-            == x.panorama_dataset.panoramas_dataset.slide_dataset
-        )
-        and (
-            x.panorama_dataset.panoramas_dataset.slide_dataset.parent
-            == x.panorama_dataset.panoramas_dataset.slide_dataset.imc_dataset
-        )
-        and (
-            x.panorama_dataset.panoramas_dataset.slide_dataset.imc_dataset.parent
-            is None
-        )
-    ):
+    if available and isinstance(layer, IMCPanoramaLayer):
+        panorama_dataset = layer._panorama_dataset
+        if layer.get_parent() != panorama_dataset:
+            return None
+        panoramas_dataset = panorama_dataset._panoramas_dataset
+        if panorama_dataset.get_parent() != panoramas_dataset:
+            return None
+        slide_dataset = panoramas_dataset._slide_dataset
+        if panoramas_dataset.get_parent() != slide_dataset:
+            return None
+        imc_dataset = slide_dataset._imc_dataset
+        if (
+            slide_dataset.get_parent() != imc_dataset
+            or imc_dataset.get_parent() is not None
+        ):
+            return None
         return load_imc_panorama_layer
-    if (
-        available
-        and isinstance(x, IMCAcquisitionLayer)
-        and x.dataset == x.acquisition_dataset
-        and x.acquisition_dataset.parent == x.acquisition_dataset.acquisitions_dataset
-        and (
-            x.acquisition_dataset.acquisitions_dataset.parent
-            == x.acquisition_dataset.acquisitions_dataset.slide_dataset
-        )
-        and (
-            x.acquisition_dataset.acquisitions_dataset.slide_dataset.parent
-            == x.acquisition_dataset.acquisitions_dataset.slide_dataset.imc_dataset
-        )
-        and (
-            x.acquisition_dataset.acquisitions_dataset.slide_dataset.imc_dataset.parent
-            is None
-        )
-    ):
+    if available and isinstance(layer, IMCAcquisitionLayer):
+        acquisition_dataset = layer._acquisition_dataset
+        if layer.get_parent() != acquisition_dataset:
+            return None
+        acquisitions_dataset = acquisition_dataset._acquisitions_dataset
+        if acquisition_dataset.get_parent() != acquisitions_dataset:
+            return None
+        slide_dataset = acquisitions_dataset._slide_dataset
+        if acquisitions_dataset.get_parent() != slide_dataset:
+            return None
+        imc_dataset = slide_dataset._imc_dataset
+        if (
+            slide_dataset.get_parent() != imc_dataset
+            or imc_dataset.get_parent() is not None
+        ):
+            return None
         return load_imc_acquisition_layer
     return None
 

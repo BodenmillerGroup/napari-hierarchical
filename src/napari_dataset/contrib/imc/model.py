@@ -6,34 +6,34 @@ class IMCDataset(Dataset):
 
 
 class IMCSlideDataset(Dataset):
-    imc_dataset: IMCDataset
     slide_id: int
+    _imc_dataset: IMCDataset
 
 
 class IMCPanoramasDataset(Dataset):
-    slide_dataset: IMCSlideDataset
     name: str = "Panoramas"
+    _slide_dataset: IMCSlideDataset
 
 
 class IMCPanoramaDataset(Dataset):
-    panoramas_dataset: IMCPanoramasDataset
     panorama_id: int
+    _panoramas_dataset: IMCPanoramasDataset
 
 
 class IMCPanoramaLayer(Layer):
-    panorama_dataset: IMCPanoramaDataset
+    _panorama_dataset: IMCPanoramaDataset
 
 
 class IMCAcquisitionsDataset(Dataset):
-    slide_dataset: IMCSlideDataset
     name: str = "Acquisitions"
+    _slide_dataset: IMCSlideDataset
 
 
 class IMCAcquisitionDataset(Dataset):
-    acquisitions_dataset: IMCAcquisitionsDataset
     acquisition_id: int
+    _acquisitions_dataset: IMCAcquisitionsDataset
 
 
 class IMCAcquisitionLayer(Layer):
-    acquisition_dataset: IMCAcquisitionDataset
     channel_index: int
+    _acquisition_dataset: IMCAcquisitionDataset

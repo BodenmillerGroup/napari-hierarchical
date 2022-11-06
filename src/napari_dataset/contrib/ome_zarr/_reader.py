@@ -35,8 +35,8 @@ def read_ome_zarr_dataset(path: PathLike) -> Dataset:
 def load_ome_zarr_image_layer(layer: Layer) -> NapariLayer:
     if not isinstance(layer, OMEZarrImageLayer):
         raise TypeError(f"Not an OME-Zarr Image layer: {layer}")
-    ome_zarr_dataset = layer.ome_zarr_dataset
-    if layer.dataset != ome_zarr_dataset:
+    ome_zarr_dataset = layer._ome_zarr_dataset
+    if layer.get_parent() != ome_zarr_dataset:
         raise ValueError(f"Not part of original OME-Zarr dataset: {layer}")
     zarr_location = ZarrLocation(ome_zarr_dataset.ome_zarr_file)
     zarr_reader = ZarrReader(zarr_location)
@@ -52,8 +52,8 @@ def load_ome_zarr_image_layer(layer: Layer) -> NapariLayer:
 def load_ome_zarr_labels_layer(layer: Layer) -> NapariLayer:
     if not isinstance(layer, OMEZarrLabelsLayer):
         raise TypeError(f"Not an OME-Zarr Labels layer: {layer}")
-    ome_zarr_dataset = layer.ome_zarr_dataset
-    if layer.dataset != ome_zarr_dataset:
+    ome_zarr_dataset = layer._ome_zarr_dataset
+    if layer.get_parent() != ome_zarr_dataset:
         raise ValueError(f"Not part of original OME-Zarr dataset: {layer}")
     zarr_location = ZarrLocation(ome_zarr_dataset.ome_zarr_file)
     labels_zarr_location = ZarrLocation(zarr_location.subpath("labels"))

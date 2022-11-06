@@ -5,7 +5,8 @@ from napari.utils.events import Event, EventedList
 from qtpy.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QObject, Qt
 
 from .._controller import DatasetController
-from ..model import Dataset, EventedDatasetChildrenList
+from ..model import Dataset
+from ..utils.parent_aware import NestedParentAwareEventedModelList
 
 
 class QDatasetTreeModel(QAbstractItemModel):
@@ -47,12 +48,15 @@ class QDatasetTreeModel(QAbstractItemModel):
         if index.isValid():
             dataset = index.internalPointer()
             assert isinstance(dataset, Dataset)
-            if dataset.parent is not None:
-                if dataset.parent.parent is not None:
-                    row = dataset.parent.parent.children.index(dataset.parent)
+            parent_dataset = dataset.get_parent()
+            if parent_dataset is not None:
+                grand_parent_dataset = parent_dataset.get_parent()
+                if grand_parent_dataset is not None:
+                    parent_datasets = grand_parent_dataset.children
                 else:
-                    row = self._controller.datasets.index(dataset.parent)
-                return self.createIndex(row, 0, object=dataset.parent)
+                    parent_datasets = self._controller.datasets
+                parent_row = parent_datasets.index(parent_dataset)
+                return self.createIndex(parent_row, 0, object=parent_dataset)
         return QModelIndex()
 
     def rowCount(self, index: QModelIndex = QModelIndex()) -> int:
@@ -150,8 +154,7 @@ class QDatasetTreeModel(QAbstractItemModel):
 
     def mimeTypes(self) -> List[str]:
         mime_types = super().mimeTypes()
-        mime_types.append("x-napari-dataset-dataset")
-        mime_types.append("x-napari-dataset-layer")
+        mime_types.append("x-napari-dataset")
         return mime_types
 
     def mimeData(self, indexes: Iterable[QModelIndex]) -> QMimeData:
@@ -159,11 +162,16 @@ class QDatasetTreeModel(QAbstractItemModel):
         indices_stacks = []
         for index in indexes:
             indices_stack = []
-            while index.isValid():
-                indices_stack.append(index.row())
-                index = index.parent()
+            dataset = index.internalPointer()
+            assert isinstance(dataset, Dataset)
+            parent_dataset = dataset.get_parent()
+            while parent_dataset is not None:
+                indices_stack.append(parent_dataset.children.index(dataset))
+                dataset = parent_dataset
+                parent_dataset = dataset.get_parent()
+            indices_stack.append(self._controller.datasets.index(dataset))
             indices_stacks.append(indices_stack)
-        data.setData("x-napari-dataset-dataset", pickle.dumps(indices_stacks))
+        data.setData("x-napari-dataset", pickle.dumps(indices_stacks))
         return data
 
     def dropMimeData(
@@ -174,10 +182,11 @@ class QDatasetTreeModel(QAbstractItemModel):
         column: int,
         parent: QModelIndex,
     ) -> bool:
-        if action not in (Qt.DropAction.CopyAction, Qt.DropAction.MoveAction):
-            return False
-        if data.hasFormat("x-napari-dataset-dataset"):
-            indices_stacks = pickle.loads(data.data("x-napari-dataset-dataset").data())
+        if data.hasFormat("x-napari-dataset") and action in (
+            Qt.DropAction.CopyAction,
+            Qt.DropAction.MoveAction,
+        ):
+            indices_stacks = pickle.loads(data.data("x-napari-dataset").data())
             assert isinstance(indices_stacks, list) and len(indices_stacks) > 0
             if parent.isValid():
                 parent_dataset = parent.internalPointer()
@@ -200,66 +209,77 @@ class QDatasetTreeModel(QAbstractItemModel):
                     source_datasets = source_datasets[source_row].children
                     source_row = indices_stack.pop()
                     assert isinstance(source_row, int)
-                dataset = source_datasets[source_row].copy(deep=True)
+                source_dataset = source_datasets[source_row]
+                dataset = source_dataset.copy(deep=True)
                 datasets.insert(row + n, dataset)
                 n += 1
             return True
-        if data.hasFormat("x-napari-dataset-layer"):
-            pass  # TODO
         return False
 
     def _connect_events(self) -> None:
+        self._controller.datasets.events.connect(self._on_datasets_event)
         for dataset in self._controller.datasets:
             self._connect_dataset_events(dataset)
-        self._controller.datasets.events.connect(self._on_datasets_event)
 
     def _disconnect_events(self) -> None:
-        self._controller.datasets.events.disconnect(self._on_datasets_event)
         for dataset in self._controller.datasets:
             self._disconnect_dataset_events(dataset)
+        self._controller.datasets.events.disconnect(self._on_datasets_event)
 
     def _connect_dataset_events(self, dataset: Dataset) -> None:
-        for child in dataset.children:
-            self._connect_dataset_events(child)
-        dataset.children.events.connect(self._on_datasets_event)
-        dataset.events.connect(self._on_dataset_event)
+        dataset.nested_event.connect(self._on_dataset_nested_event)
+        dataset.nested_list_event.connect(self._on_dataset_nested_list_event)
 
     def _disconnect_dataset_events(self, dataset: Dataset) -> None:
-        dataset.events.disconnect(self._on_dataset_event)
-        dataset.children.events.disconnect(self._on_datasets_event)
-        for child in dataset.children:
-            self._disconnect_dataset_events(child)
+        dataset.nested_event.disconnect(self._on_dataset_nested_event)
+        dataset.nested_list_event.disconnect(self._on_dataset_nested_list_event)
 
     def _on_datasets_event(self, event: Event) -> None:
+        self._process_datasets_event(event, connect=True)
+
+    def _on_dataset_nested_list_event(self, event: Event) -> None:
+        assert isinstance(event.source_event, Event)
+        datasets = event.source_event.source
+        assert isinstance(datasets, NestedParentAwareEventedModelList)
+        parent_dataset = datasets.get_parent()
+        assert isinstance(parent_dataset, Dataset)
+        if datasets == parent_dataset.children:
+            self._process_datasets_event(event.source_event)
+
+    def _process_datasets_event(self, event: Event, connect: bool = False) -> None:
         if not isinstance(event.sources[0], EventedList):
             return
-        assert isinstance(event.source, EventedList)
         datasets = event.source
-        if isinstance(datasets, EventedDatasetChildrenList):
-            parent_dataset = datasets.dataset
-        else:
-            parent_dataset = None
+        assert isinstance(datasets, EventedList)
 
-        def get_parent():
-            if parent_dataset is not None:
-                if parent_dataset.parent is not None:
-                    parent_row = parent_dataset.parent.children.index(parent_dataset)
+        def get_parent_index() -> QModelIndex:
+            if isinstance(datasets, NestedParentAwareEventedModelList):
+                parent_dataset = datasets.get_parent()
+                assert isinstance(parent_dataset, Dataset)
+                grand_parent_dataset = parent_dataset.get_parent()
+                if grand_parent_dataset is not None:
+                    parent_datasets = grand_parent_dataset.children
                 else:
-                    parent_row = self._controller.datasets.index(parent_dataset)
+                    parent_datasets = self._controller.datasets
+                parent_row = parent_datasets.index(parent_dataset)
                 return self.createIndex(parent_row, 0, object=parent_dataset)
             return QModelIndex()
 
         if event.type == "inserting":
             assert isinstance(event.index, int) and 0 <= event.index <= len(datasets)
-            self.beginInsertRows(get_parent(), event.index, event.index)
+            self.beginInsertRows(get_parent_index(), event.index, event.index)
         elif event.type == "inserted":
             self.endInsertRows()
-            assert isinstance(event.value, Dataset)
-            self._connect_dataset_events(event.value)
+            if connect:
+                assert isinstance(event.value, Dataset)
+                self._connect_dataset_events(event.value)
         elif event.type == "removing":
             assert isinstance(event.index, int) and 0 <= event.index < len(datasets)
-            self._disconnect_dataset_events(datasets[event.index])
-            self.beginRemoveRows(get_parent(), event.index, event.index)
+            if connect:
+                dataset = datasets[event.index]
+                assert isinstance(dataset, Dataset)
+                self._disconnect_dataset_events(dataset)
+            self.beginRemoveRows(get_parent_index(), event.index, event.index)
         elif event.type == "removed":
             self.endRemoveRows()
         elif event.type == "moving":
@@ -269,36 +289,64 @@ class QDatasetTreeModel(QAbstractItemModel):
                 and 0 <= event.new_index <= len(datasets)
                 and event.new_index != event.index
             )
-            parent = get_parent()
+            parent_index = get_parent_index()
             self.beginMoveRows(
-                parent, event.index, event.index, parent, event.new_index
+                parent_index, event.index, event.index, parent_index, event.new_index
             )
         elif event.type == "moved":
             self.endMoveRows()
         elif event.type == "changed" and isinstance(event.index, int):
             assert 0 <= event.index < len(datasets)
+            if connect:
+                assert isinstance(event.old_value, Dataset)
+                self._disconnect_dataset_events(event.old_value)
+                assert isinstance(event.value, Dataset)
+                self._connect_dataset_events(event.value)
             left_index = self.createIndex(event.index, 0, object=datasets[event.index])
             right_index = self.createIndex(
                 event.index, len(self.COLUMNS) - 1, object=datasets[event.index]
             )
             self.dataChanged.emit(left_index, right_index)
-        elif event.type in ("changed", "reordered"):
+        elif event.type == "changed":
+            if connect:
+                assert isinstance(event.old_value, List)
+                for old_dataset in event.old_value:
+                    assert isinstance(old_dataset, Dataset)
+                    self._disconnect_dataset_events(old_dataset)
+                assert isinstance(event.value, List)
+                for dataset in event.value:
+                    assert isinstance(dataset, Dataset)
+                    self._connect_dataset_events(dataset)
+            top_left_index = self.createIndex(0, 0, object=datasets[0])
+            bottom_right_index = self.createIndex(
+                len(datasets) - 1, len(self.COLUMNS) - 1, object=datasets[-1]
+            )
+            self.dataChanged.emit(top_left_index, bottom_right_index)
+        elif event.type == "reordered":
             top_left_index = self.createIndex(0, 0, object=datasets[0])
             bottom_right_index = self.createIndex(
                 len(datasets) - 1, len(self.COLUMNS) - 1, object=datasets[-1]
             )
             self.dataChanged.emit(top_left_index, bottom_right_index)
 
-    def _on_dataset_event(self, event: Event) -> None:
-        assert isinstance(event.source, Dataset)
-        dataset = event.source
+    def _on_dataset_nested_event(self, event: Event) -> None:
+        assert isinstance(event.source_event, Event)
         column_index = next(
-            (i for i, c in enumerate(self.COLUMNS) if c.field == event.type), None
+            (
+                column_index
+                for column_index, column in enumerate(self.COLUMNS)
+                if column.field == event.source_event.type
+            ),
+            None,
         )
         if column_index is not None:
-            if dataset.parent is not None:
-                row = dataset.parent.children.index(dataset)
+            dataset = event.source_event.source
+            assert isinstance(dataset, Dataset)
+            parent_dataset = dataset.get_parent()
+            if parent_dataset is not None:
+                datasets = parent_dataset.children
             else:
-                row = self._controller.datasets.index(dataset)
+                datasets = self._controller.datasets
+            row = datasets.index(dataset)
             index = self.createIndex(row, column_index, object=dataset)
             self.dataChanged.emit(index, index)

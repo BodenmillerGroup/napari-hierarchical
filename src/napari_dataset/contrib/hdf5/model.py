@@ -6,4 +6,4 @@ class HDF5Dataset(Dataset):
 
 
 class HDF5Layer(Layer):
-    root_hdf5_dataset: HDF5Dataset
+    _root_hdf5_dataset: HDF5Dataset

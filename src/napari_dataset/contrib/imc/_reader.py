@@ -84,17 +84,20 @@ def read_imc_dataset(path: PathLike) -> Dataset:
 def load_imc_panorama_layer(layer: Layer) -> NapariLayer:
     if not isinstance(layer, IMCPanoramaLayer):
         raise TypeError(f"Not an IMC Panorama layer: {layer}")
-    panorama_dataset = layer.panorama_dataset
-    if layer.dataset != panorama_dataset:
+    panorama_dataset = layer._panorama_dataset
+    if layer.get_parent() != panorama_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    panoramas_dataset = panorama_dataset.panoramas_dataset
-    if panorama_dataset.parent != panoramas_dataset:
+    panoramas_dataset = panorama_dataset._panoramas_dataset
+    if panorama_dataset.get_parent() != panoramas_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    slide_dataset = panoramas_dataset.slide_dataset
-    if panoramas_dataset.parent != slide_dataset:
+    slide_dataset = panoramas_dataset._slide_dataset
+    if panoramas_dataset.get_parent() != slide_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    imc_dataset = slide_dataset.imc_dataset
-    if slide_dataset.parent != imc_dataset or imc_dataset.parent is not None:
+    imc_dataset = slide_dataset._imc_dataset
+    if (
+        slide_dataset.get_parent() != imc_dataset
+        or imc_dataset.get_parent() is not None
+    ):
         raise ValueError(f"Not part of original IMC dataset: {layer}")
     with readimc.MCDFile(imc_dataset.mcd_file) as f:
         slide = next(slide for slide in f.slides if slide.id == slide_dataset.slide_id)
@@ -110,17 +113,20 @@ def load_imc_panorama_layer(layer: Layer) -> NapariLayer:
 def load_imc_acquisition_layer(layer: Layer) -> NapariLayer:
     if not isinstance(layer, IMCAcquisitionLayer):
         raise TypeError(f"Not an IMC Acquisition layer: {layer}")
-    acquisition_dataset = layer.acquisition_dataset
-    if layer.dataset != acquisition_dataset:
+    acquisition_dataset = layer._acquisition_dataset
+    if layer.get_parent() != acquisition_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    acquisitions_dataset = acquisition_dataset.acquisitions_dataset
-    if acquisition_dataset.parent != acquisitions_dataset:
+    acquisitions_dataset = acquisition_dataset._acquisitions_dataset
+    if acquisition_dataset.get_parent() != acquisitions_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    slide_dataset = acquisitions_dataset.slide_dataset
-    if acquisitions_dataset.parent != slide_dataset:
+    slide_dataset = acquisitions_dataset._slide_dataset
+    if acquisitions_dataset.get_parent() != slide_dataset:
         raise ValueError(f"Not part of original IMC dataset: {layer}")
-    imc_dataset = slide_dataset.imc_dataset
-    if slide_dataset.parent != imc_dataset or imc_dataset.parent is not None:
+    imc_dataset = slide_dataset._imc_dataset
+    if (
+        slide_dataset.get_parent() != imc_dataset
+        or imc_dataset.get_parent() is not None
+    ):
         raise ValueError(f"Not part of original IMC dataset: {layer}")
     # TODO read acquisition from TXT if reading from MCD fails
     with readimc.MCDFile(imc_dataset.mcd_file) as f:

@@ -55,15 +55,15 @@ def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunctio
     if (
         available
         and isinstance(layer, OMEZarrImageLayer)
-        and layer.dataset == layer.ome_zarr_dataset
-        and layer.ome_zarr_dataset.parent is None
+        and layer.get_parent() == layer._ome_zarr_dataset
+        and layer._ome_zarr_dataset.get_parent() is None
     ):
         return load_ome_zarr_image_layer
     if (
         available
         and isinstance(layer, OMEZarrLabelsLayer)
-        and layer.dataset == layer.ome_zarr_dataset
-        and layer.ome_zarr_dataset.parent is None
+        and layer.get_parent() == layer._ome_zarr_dataset
+        and layer._ome_zarr_dataset.get_parent() is None
     ):
         return load_ome_zarr_labels_layer
     return None

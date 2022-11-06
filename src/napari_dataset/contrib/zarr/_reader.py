@@ -44,13 +44,13 @@ def read_zarr_dataset(path: PathLike) -> Dataset:
 def load_zarr_layer(layer: Layer) -> NapariLayer:
     if not isinstance(layer, ZarrLayer):
         raise TypeError(f"Not a Zarr layer: {layer}")
-    root_dataset, zarr_names = layer.dataset.get_root()
-    if (
-        not isinstance(root_dataset, ZarrDataset)
-        or layer.root_zarr_dataset != root_dataset
-    ):
+    dataset = layer.get_parent()
+    assert dataset is not None
+    root_zarr_dataset, zarr_names = dataset.get_root()
+    if root_zarr_dataset != layer._root_zarr_dataset:
         raise ValueError(f"Not part of original Zarr dataset: {layer}")
-    z = zarr.open(store=root_dataset.zarr_file, mode="r")
+    assert isinstance(root_zarr_dataset, ZarrDataset)
+    z = zarr.open(store=root_zarr_dataset.zarr_file, mode="r")
     data = da.from_zarr(z["/".join(zarr_names)])
     napari_layer = NapariImageLayer(name=layer.name, data=data)
     return napari_layer

@@ -41,12 +41,12 @@ def read_hdf5_dataset(path: PathLike) -> Dataset:
 def load_hdf5_layer(layer: Layer) -> NapariLayer:
     if not isinstance(layer, HDF5Layer):
         raise TypeError(f"Not an HDF5 layer: {layer}")
-    root_hdf5_dataset, hdf5_names = layer.dataset.get_root()
-    if (
-        not isinstance(root_hdf5_dataset, HDF5Dataset)
-        or root_hdf5_dataset != layer.root_hdf5_dataset
-    ):
+    dataset = layer.get_parent()
+    assert dataset is not None
+    root_hdf5_dataset, hdf5_names = dataset.get_root()
+    if root_hdf5_dataset != layer._root_hdf5_dataset:
         raise ValueError(f"Not part of original HDF5 dataset: {layer}")
+    assert isinstance(root_hdf5_dataset, HDF5Dataset)
     with h5py.File(root_hdf5_dataset.hdf5_file) as f:
         data = da.from_array(f["/".join(hdf5_names)])
     napari_layer = NapariImageLayer(name=layer.name, data=data)

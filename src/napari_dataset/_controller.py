@@ -23,14 +23,19 @@ class DatasetController:
         self._datasets: EventedList[Dataset] = EventedList(
             basetype=Dataset, lookup={str: lambda dataset: dataset.name}
         )
-        self._layers: SelectableEventedList[Layer] = SelectableEventedList(
+        self._selected_datasets: EventedList[Dataset] = EventedList(
+            basetype=Dataset, lookup={str: lambda dataset: dataset.name}
+        )
+        self._current_layers: SelectableEventedList[Layer] = SelectableEventedList(
             basetype=Layer, lookup={str: lambda layer: layer.name}
         )
         self._napari_layers: bidict[Layer, NapariLayer] = bidict()
         self._ignore_viewer_layers_selection_changed_events = False
-        self._ignore_layers_selection_changed_events = False
-        self._layers.selection.events.changed.connect(
-            self._on_layers_selection_changed_event
+        self._ignore_current_layers_selection_changed_events = False
+        self._datasets.events.connect(self._on_datasets_event)
+        self._selected_datasets.events.connect(self._on_selected_datasets_event)
+        self._current_layers.selection.events.changed.connect(
+            self._on_current_layers_selection_changed_event
         )
 
     def __del__(self) -> None:
@@ -38,6 +43,13 @@ class DatasetController:
             self._viewer.layers.selection.events.changed.disconnect(
                 self._on_viewer_layers_selection_changed_event
             )
+
+    def register_viewer(self, viewer: Viewer) -> None:
+        assert self._viewer is None
+        self._viewer = viewer
+        viewer.layers.selection.events.changed.connect(
+            self._on_viewer_layers_selection_changed_event
+        )
 
     def can_read_dataset(self, path: PathLike) -> bool:
         dataset_reader_function = self._get_dataset_reader_function(path)
@@ -64,8 +76,6 @@ class DatasetController:
         except Exception as e:
             raise DatasetControllerException(e)
         self._datasets.append(dataset)
-        for layer in dataset.iter_layers(recursive=True):
-            self._layers.append(layer)
         return dataset
 
     def write_dataset(self, path: PathLike, dataset: Dataset) -> None:
@@ -101,13 +111,6 @@ class DatasetController:
         except Exception as e:
             raise DatasetControllerException(e)
 
-    def register_viewer(self, viewer: Viewer) -> None:
-        assert self._viewer is None
-        self._viewer = viewer
-        viewer.layers.selection.events.changed.connect(
-            self._on_viewer_layers_selection_changed_event
-        )
-
     def _get_dataset_reader_function(
         self, path: PathLike
     ) -> Optional[hookspecs.DatasetReaderFunction]:
@@ -140,19 +143,50 @@ class DatasetController:
         )
         return layer_saver_function
 
-    def _on_layers_selection_changed_event(self, event: Event) -> None:
+    def _on_datasets_event(self, event: Event) -> None:
+        if not isinstance(event.sources[0], EventedList):
+            return
+        if event.type in ("inserted", "removed", "changed"):
+            if len(self._selected_datasets) > 0:
+                self._selected_datasets.clear()
+            else:
+                self._update_current_layers()
+
+    def _on_selected_datasets_event(self, event: Event) -> None:
+        if not isinstance(event.sources[0], EventedList):
+            return
+        if event.type in ("inserted", "removed", "changed"):
+            self._update_current_layers()
+
+    def _update_current_layers(self) -> None:
+        if len(self._selected_datasets) > 0:
+            datasets = self._selected_datasets
+        else:
+            datasets = self._datasets
+        old_current_layers = set(self._current_layers)
+        new_current_layers: Set[Layer] = set()
+        for dataset in datasets:
+            assert isinstance(dataset, Dataset)
+            new_current_layers.update(dataset.iter_layers(recursive=True))
+        for layer in old_current_layers.difference(new_current_layers):
+            self._current_layers.remove(layer)
+        for layer in new_current_layers.difference(old_current_layers):
+            self._current_layers.append(layer)
+
+    def _on_current_layers_selection_changed_event(self, event: Event) -> None:
         if (
             self._viewer is not None
-            and not self._ignore_layers_selection_changed_events
+            and not self._ignore_current_layers_selection_changed_events
         ):
-            selected_napari_layers: Set[NapariLayer] = set()
-            for layer in self._layers.selection:
-                selected_napari_layer = self._napari_layers.get(layer)
-                if selected_napari_layer is not None:
-                    selected_napari_layers.add(selected_napari_layer)
+            new_viewer_layers_selection: Set[NapariLayer] = set()
+            for layer in self._current_layers.selection:
+                assert isinstance(layer, Layer)
+                napari_layer = self._napari_layers.get(layer)
+                if napari_layer is not None and napari_layer in self._viewer.layers:
+                    new_viewer_layers_selection.add(napari_layer)
             self._ignore_viewer_layers_selection_changed_events = True
             try:
-                self._viewer.layers.selection = selected_napari_layers
+                self._viewer.layers.selection = new_viewer_layers_selection
             finally:
                 self._ignore_viewer_layers_selection_changed_events = False
 
@@ -161,16 +195,17 @@ class DatasetController:
             self._viewer is not None
             and not self._ignore_viewer_layers_selection_changed_events
         ):
-            selected_layers: Set[Layer] = set()
+            new_current_layers_selection: Set[Layer] = set()
             for napari_layer in self._viewer.layers.selection:
-                selected_layer = self._napari_layers.inverse.get(napari_layer)
-                if selected_layer is not None:
-                    selected_layers.add(selected_layer)
-            self._ignore_layers_selection_changed_events = True
+                assert isinstance(napari_layer, NapariLayer)
+                layer = self._napari_layers.inverse.get(napari_layer)
+                if layer is not None and layer in self._current_layers:
+                    new_current_layers_selection.add(layer)
+            self._ignore_current_layers_selection_changed_events = True
             try:
-                self._layers.selection = selected_layers
+                self._current_layers.selection = new_current_layers_selection
             finally:
-                self._ignore_layers_selection_changed_events = False
+                self._ignore_current_layers_selection_changed_events = False
 
     @property
     def pm(self) -> PluginManager:
@@ -185,8 +220,12 @@ class DatasetController:
         return self._datasets
 
     @property
-    def layers(self) -> SelectableEventedList[Layer]:
-        return self._layers
+    def selected_datasets(self) -> EventedList[Dataset]:
+        return self._selected_datasets
+
+    @property
+    def current_layers(self) -> SelectableEventedList[Layer]:
+        return self._current_layers
 
 
 class DatasetControllerException(DatasetException):

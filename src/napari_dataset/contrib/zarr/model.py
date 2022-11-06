@@ -6,4 +6,4 @@ class ZarrDataset(Dataset):
 
 
 class ZarrLayer(Layer):
-    root_zarr_dataset: ZarrDataset
+    _root_zarr_dataset: ZarrDataset
