@@ -96,7 +96,13 @@ class QDatasetTreeModel(QAbstractItemModel):
             column = self.COLUMNS[index.column()]
             if column.editable:
                 flags |= Qt.ItemFlag.ItemIsEditable
-            flags |= Qt.ItemFlag.ItemIsDragEnabled
+            dataset = index.internalPointer()
+            assert isinstance(dataset, Dataset)
+            if all(
+                layer.napari_layer is not None
+                for layer in dataset.iter_layers(recursive=True)
+            ):
+                flags |= Qt.ItemFlag.ItemIsDragEnabled
         flags |= Qt.ItemFlag.ItemIsDropEnabled
         return flags
 
@@ -204,7 +210,7 @@ class QDatasetTreeModel(QAbstractItemModel):
                     source_row = indices_stack.pop()
                     assert isinstance(source_row, int)
                 source_dataset = source_datasets[source_row]
-                dataset = source_dataset.copy(deep=True)
+                dataset = Dataset.from_dataset(source_dataset)
                 datasets.insert(row + n, dataset)
                 n += 1
             return True

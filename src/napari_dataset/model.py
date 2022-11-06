@@ -31,6 +31,15 @@ class Dataset(NestedParentAwareEventedModel["Dataset"]):
         self.layers.set_parent(self)
         self.children.set_parent(self)
 
+    @staticmethod
+    def from_dataset(dataset: "Dataset") -> "Dataset":
+        new_dataset = Dataset(name=dataset.name)
+        new_dataset.layers.extend(Layer.from_layer(layer) for layer in dataset.layers)
+        new_dataset.children.extend(
+            Dataset.from_dataset(child) for child in dataset.children
+        )
+        return new_dataset
+
     def __hash__(self) -> int:
         return id(self)
 
@@ -64,14 +73,20 @@ class Dataset(NestedParentAwareEventedModel["Dataset"]):
 
 class Layer(ParentAwareEventedModel[Dataset]):
     name: str
+    napari_layer: Optional[NapariLayer] = Field(default=None, exclude=True)
     groups: ParentAwareEventedModelDict["Layer", str, str] = Field(
         default_factory=lambda: ParentAwareEventedModelDict(basetype=str)
     )  # grouping --> group
-    napari_layer: Optional[NapariLayer] = Field(default=None, exclude=True)
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.groups.set_parent(self)
+
+    @staticmethod
+    def from_layer(layer: "Layer") -> "Layer":
+        new_layer = Layer(name=layer.name, napari_layer=layer.napari_layer)
+        new_layer.groups.update(layer.groups)
+        return new_layer
 
     def __hash__(self) -> int:
         return id(self)
