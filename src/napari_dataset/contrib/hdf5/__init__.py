@@ -40,10 +40,7 @@ def napari_dataset_get_dataset_reader(
 @hookimpl
 def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunction]:
     if available and isinstance(layer, HDF5Layer):
-        dataset = layer.get_parent()
-        assert dataset is not None
-        if dataset.get_root()[0] == layer.root_hdf5_dataset:
-            return load_hdf5_layer
+        return load_hdf5_layer
     return None
 
 

@@ -1,9 +1,6 @@
-from napari_dataset.model import Dataset, Layer
-
-
-class HDF5Dataset(Dataset):
-    hdf5_file: str
+from napari_dataset.model import Layer
 
 
 class HDF5Layer(Layer):
-    root_hdf5_dataset: HDF5Dataset
+    hdf5_file: str
+    hdf5_path: str

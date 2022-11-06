@@ -1,9 +1,6 @@
-from napari_dataset.model import Dataset, Layer
-
-
-class ZarrDataset(Dataset):
-    zarr_file: str
+from napari_dataset.model import Layer
 
 
 class ZarrLayer(Layer):
-    root_zarr_dataset: ZarrDataset
+    zarr_file: str
+    zarr_path: str

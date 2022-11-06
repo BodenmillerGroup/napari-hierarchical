@@ -8,7 +8,7 @@ from napari.layers import Labels as NapariLabelsLayer
 
 from napari_dataset.model import Dataset, Layer
 
-from .model import OMEZarrDataset, OMEZarrImageLayer, OMEZarrLabelsLayer
+from .model import OMEZarrImageLayer, OMEZarrLabelsLayer
 
 try:
     import ome_zarr
@@ -23,21 +23,18 @@ PathLike = Union[str, os.PathLike]
 
 
 def read_ome_zarr_dataset(path: PathLike) -> Dataset:
-    ome_zarr_dataset = OMEZarrDataset(name=Path(path).name, ome_zarr_file=str(path))
-    for ome_zarr_image_layer in _create_ome_zarr_image_layers(path, ome_zarr_dataset):
-        ome_zarr_dataset.layers.append(ome_zarr_image_layer)
-    for ome_zarr_labels_layer in _create_ome_zarr_labels_layers(path, ome_zarr_dataset):
-        ome_zarr_dataset.layers.append(ome_zarr_labels_layer)
-    return ome_zarr_dataset
+    dataset = Dataset(name=Path(path).name)
+    for image_layer in _create_image_layers(path):
+        dataset.layers.append(image_layer)
+    for labels_layer in _create_labels_layers(path):
+        dataset.layers.append(labels_layer)
+    return dataset
 
 
 def load_ome_zarr_image_layer(layer: Layer) -> None:
     if not isinstance(layer, OMEZarrImageLayer):
         raise TypeError(f"Not an OME-Zarr Image layer: {layer}")
-    ome_zarr_dataset = layer.ome_zarr_dataset
-    if layer.get_parent() != ome_zarr_dataset:
-        raise ValueError(f"Not part of original OME-Zarr dataset: {layer}")
-    zarr_location = ZarrLocation(ome_zarr_dataset.ome_zarr_file)
+    zarr_location = ZarrLocation(layer.ome_zarr_file)
     zarr_reader = ZarrReader(zarr_location)
     zarr_node = ZarrNode(zarr_location, zarr_reader)
     multiscales = Multiscales(zarr_node)
@@ -50,10 +47,7 @@ def load_ome_zarr_image_layer(layer: Layer) -> None:
 def load_ome_zarr_labels_layer(layer: Layer) -> None:
     if not isinstance(layer, OMEZarrLabelsLayer):
         raise TypeError(f"Not an OME-Zarr Labels layer: {layer}")
-    ome_zarr_dataset = layer.ome_zarr_dataset
-    if layer.get_parent() != ome_zarr_dataset:
-        raise ValueError(f"Not part of original OME-Zarr dataset: {layer}")
-    zarr_location = ZarrLocation(ome_zarr_dataset.ome_zarr_file)
+    zarr_location = ZarrLocation(layer.ome_zarr_file)
     labels_zarr_location = ZarrLocation(zarr_location.subpath("labels"))
     label_zarr_location = ZarrLocation(labels_zarr_location.subpath(layer.label_name))
     label_zarr_reader = ZarrReader(label_zarr_location)
@@ -66,9 +60,8 @@ def load_ome_zarr_labels_layer(layer: Layer) -> None:
     layer.napari_layer = NapariLabelsLayer(name=layer.name, data=data, multiscale=True)
 
 
-def _create_ome_zarr_image_layers(
-    path: PathLike, ome_zarr_dataset: OMEZarrDataset
-) -> Generator[OMEZarrImageLayer, None, None]:
+def _create_image_layers(path: PathLike) -> Generator[OMEZarrImageLayer, None, None]:
+    file_name = Path(path).name
     zarr_location = ZarrLocation(str(path))
     zarr_reader = ZarrReader(zarr_location)
     zarr_node = ZarrNode(zarr_location, zarr_reader)
@@ -85,45 +78,39 @@ def _create_ome_zarr_image_layers(
         channel_axis = channel_axes[0]
         channel_names = multiscales.node.metadata.get("name")
     else:
-        raise ValueError(f"{ome_zarr_dataset} contains multiple channel axes")
+        raise ValueError(f"{file_name} contains multiple channel axes")
     if channel_axis is not None:
         data = [multiscales.array(res, "") for res in multiscales.datasets]
         if len(data) == 0:
-            raise ValueError(f"{ome_zarr_dataset} does not contain any data")
+            raise ValueError(f"{file_name} does not contain any data")
         num_channels = data[0].shape[channel_axis]
         if any(a.shape[channel_axis] != num_channels for a in data):
             raise ValueError(
-                f"{ome_zarr_dataset} has resolutions with inconsistent channel numbers"
+                f"{file_name} has resolutions with inconsistent channel numbers"
             )
         for channel_index in range(num_channels):
-            ome_zarr_image_layer = OMEZarrImageLayer(
-                name=f"{ome_zarr_dataset.name} [C{channel_index:02d}]",
-                dataset=ome_zarr_dataset,
-                ome_zarr_dataset=ome_zarr_dataset,
+            image_layer = OMEZarrImageLayer(
+                name=f"{file_name} [C{channel_index:02d}]",
+                ome_zarr_file=str(path),
                 channel_axis=channel_axis,
                 channel_index=channel_index,
             )
             if channel_names is not None and len(channel_names) == num_channels:
-                ome_zarr_image_layer.groups[
-                    "Channel"
+                image_layer.groups[
+                    "OME Channel"
                 ] = f"[C{channel_index:02d}] channel_names[channel_index]"
             else:
-                ome_zarr_image_layer.groups[
-                    "Channel"
+                image_layer.groups[
+                    "OME Channel"
                 ] = f"[C{channel_index:02d}] Channel {channel_index}"
-            yield ome_zarr_image_layer
+            yield image_layer
     else:
-        ome_zarr_image_layer = OMEZarrImageLayer(
-            name=ome_zarr_dataset.name,
-            dataset=ome_zarr_dataset,
-            ome_zarr_dataset=ome_zarr_dataset,
-        )
-        yield ome_zarr_image_layer
+        image_layer = OMEZarrImageLayer(name=file_name)
+        yield image_layer
 
 
-def _create_ome_zarr_labels_layers(
-    path: PathLike, ome_zarr_dataset: OMEZarrDataset
-) -> Generator[OMEZarrLabelsLayer, None, None]:
+def _create_labels_layers(path: PathLike) -> Generator[OMEZarrLabelsLayer, None, None]:
+    file_name = Path(path).name
     zarr_location = ZarrLocation(str(path))
     zarr_reader = ZarrReader(zarr_location)
     for labels_zarr_node in zarr_reader():
@@ -132,11 +119,10 @@ def _create_ome_zarr_labels_layers(
             and "labels" in labels_zarr_node.zarr.root_attrs
         ):
             for label_name in labels_zarr_node.zarr.root_attrs["labels"]:
-                ome_zarr_labels_layer = OMEZarrLabelsLayer(
-                    name=f"{ome_zarr_dataset.name} [{label_name}]",
-                    dataset=ome_zarr_dataset,
-                    ome_zarr_dataset=ome_zarr_dataset,
+                labels_layer = OMEZarrLabelsLayer(
+                    name=f"{file_name} [{label_name}]",
+                    ome_zarr_file=str(path),
                     label_name=label_name,
                 )
-                ome_zarr_labels_layer.groups["Label"] = label_name
-                yield ome_zarr_labels_layer
+                labels_layer.groups["OME Label"] = label_name
+                yield labels_layer

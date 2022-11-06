@@ -40,10 +40,7 @@ def napari_dataset_get_dataset_reader(
 @hookimpl
 def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunction]:
     if available and isinstance(layer, ZarrLayer):
-        dataset = layer.get_parent()
-        assert dataset is not None
-        if dataset.get_root()[0] == layer.root_zarr_dataset:
-            return load_zarr_layer
+        return load_zarr_layer
     return None
 
 

@@ -6,16 +6,7 @@ from napari.layers import Image as NapariImageLayer
 
 from napari_dataset.model import Dataset, Layer
 
-from .model import (
-    IMCAcquisitionDataset,
-    IMCAcquisitionLayer,
-    IMCAcquisitionsDataset,
-    IMCDataset,
-    IMCPanoramaDataset,
-    IMCPanoramaLayer,
-    IMCPanoramasDataset,
-    IMCSlideDataset,
-)
+from .model import IMCAcquisitionLayer, IMCPanoramaLayer
 
 try:
     import readimc
@@ -26,52 +17,42 @@ PathLike = Union[str, os.PathLike]
 
 
 def read_imc_dataset(path: PathLike) -> Dataset:
-    imc_dataset = IMCDataset(name=Path(path).name, mcd_file=str(path))
+    imc_dataset = Dataset(name=Path(path).name)
     with readimc.MCDFile(path) as f:
         for slide in f.slides:
-            slide_dataset = IMCSlideDataset(
-                name=f"[S{slide.id:02d}] {slide.description}",
-                imc_dataset=imc_dataset,
-                slide_id=slide.id,
-            )
-            panoramas_dataset = IMCPanoramasDataset(slide_dataset=slide_dataset)
+            slide_dataset = Dataset(name=f"[S{slide.id:02d}] {slide.description}")
+            panoramas_dataset = Dataset(name="Panoramas")
             for panorama in slide.panoramas:
-                panorama_dataset = IMCPanoramaDataset(
-                    name=f"[P{panorama.id:02d}] {panorama.description}",
-                    panoramas_dataset=panoramas_dataset,
-                    panorama_id=panorama.id,
+                panorama_dataset = Dataset(
+                    name=f"[P{panorama.id:02d}] {panorama.description}"
                 )
                 panorama_layer = IMCPanoramaLayer(
                     name=f"{imc_dataset.name} [S{slide.id:02d} P{panorama.id:02d}]",
-                    dataset=panorama_dataset,
-                    panorama_dataset=panorama_dataset,
+                    mcd_file=str(path),
+                    slide_id=slide.id,
+                    panorama_id=panorama.id,
                 )
                 panorama_dataset.layers.append(panorama_layer)
                 panoramas_dataset.children.append(panorama_dataset)
             slide_dataset.children.append(panoramas_dataset)
-            acquisitions_dataset = IMCAcquisitionsDataset(slide_dataset=slide_dataset)
+            acquisitions_dataset = Dataset(name="Acquisitions")
             for acquisition in slide.acquisitions:
-                acquisition_dataset = IMCAcquisitionDataset(
-                    name=f"[A{acquisition.id:02d}] {acquisition.description}",
-                    acquisitions_dataset=acquisitions_dataset,
-                    acquisition_id=acquisition.id,
+                acquisition_dataset = Dataset(
+                    name=f"[A{acquisition.id:02d}] {acquisition.description}"
                 )
                 for channel_index, (channel_name, channel_label) in enumerate(
                     zip(acquisition.channel_names, acquisition.channel_labels)
                 ):
                     acquisition_layer = IMCAcquisitionLayer(
-                        name=(
-                            f"{imc_dataset.name} ["
-                            f"S{slide.id:02d} "
-                            f"A{acquisition.id:02d} "
-                            f"C{channel_index:02d}]"
-                        ),
-                        dataset=acquisition_dataset,
-                        acquisition_dataset=acquisition_dataset,
+                        name=f"{imc_dataset.name} "
+                        f"[S{slide.id:02d} A{acquisition.id:02d} C{channel_index:02d}]",
+                        mcd_file=str(path),
+                        slide_id=slide.id,
+                        acquisition_id=acquisition.id,
                         channel_index=channel_index,
                     )
                     acquisition_layer.groups[
-                        "Channel"
+                        "IMC Channel"
                     ] = f"[C{channel_index:02d}] {channel_name} {channel_label}"
                     acquisition_dataset.layers.append(acquisition_layer)
                 acquisitions_dataset.children.append(acquisition_dataset)
@@ -83,27 +64,10 @@ def read_imc_dataset(path: PathLike) -> Dataset:
 def load_imc_panorama_layer(layer: Layer) -> None:
     if not isinstance(layer, IMCPanoramaLayer):
         raise TypeError(f"Not an IMC Panorama layer: {layer}")
-    panorama_dataset = layer.panorama_dataset
-    if layer.get_parent() != panorama_dataset:
-        raise ValueError(f"Not part of original IMC dataset: {layer}")
-    panoramas_dataset = panorama_dataset.panoramas_dataset
-    if panorama_dataset.get_parent() != panoramas_dataset:
-        raise ValueError(f"Not part of original IMC dataset: {layer}")
-    slide_dataset = panoramas_dataset.slide_dataset
-    if panoramas_dataset.get_parent() != slide_dataset:
-        raise ValueError(f"Not part of original IMC dataset: {layer}")
-    imc_dataset = slide_dataset.imc_dataset
-    if (
-        slide_dataset.get_parent() != imc_dataset
-        or imc_dataset.get_parent() is not None
-    ):
-        raise ValueError(f"Not part of original IMC dataset: {layer}")
-    with readimc.MCDFile(imc_dataset.mcd_file) as f:
-        slide = next(slide for slide in f.slides if slide.id == slide_dataset.slide_id)
+    with readimc.MCDFile(layer.mcd_file) as f:
+        slide = next(slide for slide in f.slides if slide.id == layer.slide_id)
         panorama = next(
-            panorama
-            for panorama in slide.panoramas
-            if panorama.id == panorama_dataset.panorama_id
+            panorama for panorama in slide.panoramas if panorama.id == layer.panorama_id
         )
         data = f.read_panorama(panorama)
     layer.napari_layer = NapariImageLayer(name=layer.name, data=data)  # TODO transform
@@ -112,28 +76,13 @@ def load_imc_panorama_layer(layer: Layer) -> None:
 def load_imc_acquisition_layer(layer: Layer) -> None:
     if not isinstance(layer, IMCAcquisitionLayer):
         raise TypeError(f"Not an IMC Acquisition layer: {layer}")
-    acquisition_dataset = layer.acquisition_dataset
-    if layer.get_parent() != acquisition_dataset:
-        raise ValueError(f"Not part of original IMC dataset: {layer}")
-    acquisitions_dataset = acquisition_dataset.acquisitions_dataset
-    if acquisition_dataset.get_parent() != acquisitions_dataset:
-        raise ValueError(f"Not part of original IMC dataset: {layer}")
-    slide_dataset = acquisitions_dataset.slide_dataset
-    if acquisitions_dataset.get_parent() != slide_dataset:
-        raise ValueError(f"Not part of original IMC dataset: {layer}")
-    imc_dataset = slide_dataset.imc_dataset
-    if (
-        slide_dataset.get_parent() != imc_dataset
-        or imc_dataset.get_parent() is not None
-    ):
-        raise ValueError(f"Not part of original IMC dataset: {layer}")
     # TODO read acquisition from TXT if reading from MCD fails
-    with readimc.MCDFile(imc_dataset.mcd_file) as f:
-        slide = next(slide for slide in f.slides if slide.id == slide_dataset.slide_id)
+    with readimc.MCDFile(layer.mcd_file) as f:
+        slide = next(slide for slide in f.slides if slide.id == layer.slide_id)
         acquisition = next(
             acquisition
             for acquisition in slide.acquisitions
-            if acquisition.id == acquisition_dataset.acquisition_id
+            if acquisition.id == layer.acquisition_id
         )
         data = f.read_acquisition(acquisition)[layer.channel_index]
     layer.napari_layer = NapariImageLayer(name=layer.name, data=data)  # TODO transform

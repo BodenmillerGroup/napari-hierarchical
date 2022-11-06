@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
-from typing import Sequence, Union
+from typing import Optional, Sequence, Union
 
 from napari.layers import Image as NapariImageLayer
 
 from napari_dataset.model import Dataset, Layer
 
-from .model import HDF5Dataset, HDF5Layer
+from .model import HDF5Layer
 
 try:
     import dask.array as da
@@ -19,68 +19,53 @@ PathLike = Union[str, os.PathLike]
 
 
 def read_hdf5_dataset(path: PathLike) -> Dataset:
-    root_dataset = HDF5Dataset(name=Path(path).name, hdf5_file=str(path))
     with h5py.File(path) as f:
-        for child_hdf5_item_name, child_hdf5_item in f.items():
-            if isinstance(child_hdf5_item, h5py.Group):
-                child_group_dataset = _create_hdf5_group_dataset(
-                    root_dataset, child_hdf5_item, [child_hdf5_item_name]
-                )
-                root_dataset.children.append(child_group_dataset)
-            elif isinstance(child_hdf5_item, h5py.Dataset):
-                child_dataset_dataset = _create_hdf5_dataset_dataset(
-                    root_dataset, child_hdf5_item, [child_hdf5_item_name]
-                )
-                root_dataset.children.append(child_dataset_dataset)
-            else:
-                raise TypeError(f"Unsupported HDF5 type: {type(child_hdf5_item)}")
-    return root_dataset
+        return _create_dataset(str(path), [], f, name=Path(path).name)
 
 
 def load_hdf5_layer(layer: Layer) -> None:
     if not isinstance(layer, HDF5Layer):
         raise TypeError(f"Not an HDF5 layer: {layer}")
-    dataset = layer.get_parent()
-    assert dataset is not None
-    root_hdf5_dataset, hdf5_names = dataset.get_root()
-    if root_hdf5_dataset != layer.root_hdf5_dataset:
-        raise ValueError(f"Not part of original HDF5 dataset: {layer}")
-    assert isinstance(root_hdf5_dataset, HDF5Dataset)
-    with h5py.File(root_hdf5_dataset.hdf5_file) as f:
-        data = da.from_array(f["/".join(hdf5_names)])
+    with h5py.File(layer.hdf5_file) as f:
+        data = da.from_array(f[layer.hdf5_path])
     layer.napari_layer = NapariImageLayer(name=layer.name, data=data)
 
 
-def _create_hdf5_group_dataset(
-    root_dataset: HDF5Dataset, hdf5_group: "h5py.Group", hdf5_names: Sequence[str]
+def _create_dataset(
+    hdf5_file: str,
+    hdf5_names: Sequence[str],
+    hdf5_group: "h5py.Group",
+    name: Optional[str] = None,
 ) -> Dataset:
     assert isinstance(hdf5_group, h5py.Group)
-    dataset = Dataset(name=hdf5_group.name)
-    for child_hdf5_item_name, child_hdf5_item in hdf5_group.items():
-        if isinstance(child_hdf5_item, h5py.Group):
-            child_group_dataset = _create_hdf5_group_dataset(
-                root_dataset, child_hdf5_item, [*hdf5_names, child_hdf5_item_name]
-            )
-            dataset.children.append(child_group_dataset)
-        elif isinstance(child_hdf5_item, h5py.Dataset):
-            child_dataset_dataset = _create_hdf5_dataset_dataset(
-                root_dataset, child_hdf5_item, [*hdf5_names, child_hdf5_item_name]
-            )
-            dataset.children.append(child_dataset_dataset)
-        else:
-            raise TypeError(f"Unsupported HDF5 type: {type(child_hdf5_item)}")
+    if name is None:
+        name = Path(hdf5_group.name).name
+    dataset = Dataset(name=name)
+    for hdf5_name, hdf5_item in hdf5_group.items():
+        if isinstance(hdf5_item, h5py.Group):
+            child = _create_dataset(hdf5_file, [*hdf5_names, hdf5_name], hdf5_item)
+            dataset.children.append(child)
+        elif isinstance(hdf5_item, h5py.Dataset):
+            layer = _create_layer(hdf5_file, [*hdf5_names, hdf5_name], hdf5_item)
+            dataset.layers.append(layer)
     return dataset
 
 
-def _create_hdf5_dataset_dataset(
-    root_dataset: HDF5Dataset, hdf5_dataset: "h5py.Dataset", hdf5_names: Sequence[str]
-) -> Dataset:
+def _create_layer(
+    hdf5_file: str,
+    hdf5_names: Sequence[str],
+    hdf5_dataset: "h5py.Dataset",
+    name: Optional[str] = None,
+) -> HDF5Layer:
     assert isinstance(hdf5_dataset, h5py.Dataset)
-    dataset = Dataset(name=hdf5_dataset.name)
-    layer = HDF5Layer(
-        name=f"{Path(root_dataset.hdf5_file).name} [{'/'.join(hdf5_names)}]",
-        dataset=dataset,
-        root_hdf5_dataset=root_dataset,
-    )
-    dataset.layers.append(layer)
-    return dataset
+    hdf5_path = "/".join(hdf5_names)
+    if name is None:
+        name = f"{Path(hdf5_file).name} [/{hdf5_path}]"
+    layer = HDF5Layer(name=name, hdf5_file=hdf5_file, hdf5_path=hdf5_path)
+    if len(hdf5_names) > 0:
+        layer.groups["HDF5 Dataset"] = (
+            "/*" * (len(hdf5_names) - 1) + "/" + hdf5_names[-1]
+        )
+    else:
+        layer.groups["HDF5 Dataset"] = "/"
+    return layer
