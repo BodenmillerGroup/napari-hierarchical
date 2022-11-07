@@ -16,8 +16,8 @@ class QDatasetTreeView(QTreeView):
         super().__init__(parent)
         self._controller = controller
         self._model = QDatasetTreeModel(controller)
-        self._ignore_selected_datasets_events = False
-        self._ignore_selection_changed = False
+        self._updating_selected_datasets = False
+        self._updating_tree_view_selection = False
         self.setModel(self._model)
         self.header().hide()
         self.header().setStretchLastSection(False)
@@ -55,38 +55,38 @@ class QDatasetTreeView(QTreeView):
     def _on_selection_changed(
         self, selected: QItemSelection, deselected: QItemSelection
     ) -> None:
-        if not self._ignore_selection_changed:
+        if not self._updating_tree_view_selection:
             old_selected_datasets = set(self._controller.selected_datasets)
             new_selected_datasets: Set[Dataset] = set()
             for index in self.selectionModel().selectedRows():
                 dataset = index.internalPointer()
                 assert isinstance(dataset, Dataset)
                 new_selected_datasets.add(dataset)
-            self._ignore_selected_datasets_events = True
+            self._updating_selected_datasets = True
             try:
                 for dataset in old_selected_datasets.difference(new_selected_datasets):
                     self._controller.selected_datasets.remove(dataset)
                 for dataset in new_selected_datasets.difference(old_selected_datasets):
                     self._controller.selected_datasets.append(dataset)
             finally:
-                self._ignore_selected_datasets_events = False
+                self._updating_selected_datasets = False
 
     def _on_selected_datasets_event(self, event: Event) -> None:
         if not isinstance(event.sources[0], EventedList):
             return
         if (
             event.type in ("inserted", "removed", "changed")
-            and not self._ignore_selected_datasets_events
+            and not self._updating_selected_datasets
         ):
             new_item_selection = QItemSelection()
             for dataset in self._controller.selected_datasets:
                 assert isinstance(dataset, Dataset)
                 index = self._model.create_dataset_index(dataset)
                 new_item_selection.append(QItemSelectionRange(index))
-            self._ignore_selection_changed = True
+            self._updating_tree_view_selection = True
             try:
                 self.selectionModel().select(
                     new_item_selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
                 )
             finally:
-                self._ignore_selection_changed = False
+                self._updating_tree_view_selection = False

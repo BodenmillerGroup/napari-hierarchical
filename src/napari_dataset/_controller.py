@@ -27,8 +27,8 @@ class DatasetController:
         self._current_layers: SelectableEventedList[Layer] = SelectableEventedList(
             basetype=Layer, lookup={str: lambda layer: layer.name}
         )
-        self._ignore_viewer_layers_selection_changed_events = False
-        self._ignore_current_layers_selection_changed_events = False
+        self._updating_viewer_layers_selection = False
+        self._updating_current_layers_selection = False
         self._datasets.events.connect(self._on_datasets_event)
         self._selected_datasets.events.connect(self._on_selected_datasets_event)
         self._current_layers.selection.events.changed.connect(
@@ -202,10 +202,7 @@ class DatasetController:
             self._current_layers.append(layer)
 
     def _on_current_layers_selection_changed_event(self, event: Event) -> None:
-        if (
-            self._viewer is not None
-            and not self._ignore_current_layers_selection_changed_events
-        ):
+        if self._viewer is not None and not self._updating_current_layers_selection:
             new_viewer_layers_selection: Set[NapariLayer] = set()
             for layer in self._current_layers.selection:
                 assert isinstance(layer, Layer)
@@ -214,17 +211,14 @@ class DatasetController:
                     and layer.napari_layer in self._viewer.layers
                 ):
                     new_viewer_layers_selection.add(layer.napari_layer)
-            self._ignore_viewer_layers_selection_changed_events = True
+            self._updating_viewer_layers_selection = True
             try:
                 self._viewer.layers.selection = new_viewer_layers_selection
             finally:
-                self._ignore_viewer_layers_selection_changed_events = False
+                self._updating_viewer_layers_selection = False
 
     def _on_viewer_layers_selection_changed_event(self, event: Event) -> None:
-        if (
-            self._viewer is not None
-            and not self._ignore_viewer_layers_selection_changed_events
-        ):
+        if self._viewer is not None and not self._updating_viewer_layers_selection:
             new_current_layers_selection: Set[Layer] = set()
             for napari_layer in self._viewer.layers.selection:
                 assert isinstance(napari_layer, NapariLayer)
@@ -239,11 +233,11 @@ class DatasetController:
                 )
                 if layer is not None and layer in self._current_layers:
                     new_current_layers_selection.add(layer)
-            self._ignore_current_layers_selection_changed_events = True
+            self._updating_current_layers_selection = True
             try:
                 self._current_layers.selection = new_current_layers_selection
             finally:
-                self._ignore_current_layers_selection_changed_events = False
+                self._updating_current_layers_selection = False
 
     @property
     def pm(self) -> PluginManager:

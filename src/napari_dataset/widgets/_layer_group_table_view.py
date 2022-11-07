@@ -22,8 +22,8 @@ class QLayerGroupTableView(QTableView):
         self._model = QLayerGroupTableModel(
             controller, grouping=grouping, close_callback=close_callback
         )
-        self._ignore_layers_selection_changed_events = False
-        self._ignore_selection_changed = False
+        self._updating_current_layers_selection = False
+        self._updating_table_view_selection = False
         self._proxy_model = QSortFilterProxyModel()
         self._proxy_model.setSourceModel(self._model)
         self._proxy_model.sort(QLayerGroupTableModel.COLUMNS.NAME)
@@ -65,23 +65,23 @@ class QLayerGroupTableView(QTableView):
     def _on_selection_changed(
         self, selected: QItemSelection, deselected: QItemSelection
     ) -> None:
-        if not self._ignore_selection_changed:
+        if not self._updating_table_view_selection:
             new_current_layers_selection: Set[Layer] = set()
             for proxy_index in self.selectionModel().selectedRows():
                 index = self._proxy_model.mapToSource(proxy_index)
                 group = self._model.groups[index.row()]
                 group_layers = self._model.group_layers[group]
                 new_current_layers_selection.update(group_layers)
-            self._ignore_layers_selection_changed_events = True
+            self._updating_current_layers_selection = True
             try:
                 self._controller.current_layers.selection = new_current_layers_selection
             finally:
-                self._ignore_layers_selection_changed_events = False
+                self._updating_current_layers_selection = False
 
     def _on_current_layers_selection_changed_event(self, event: Event) -> None:
-        if not self._ignore_layers_selection_changed_events:
-            self._ignore_selection_changed = True
+        if not self._updating_current_layers_selection:
+            self._updating_table_view_selection = True
             try:
                 self.selectionModel().clear()
             finally:
-                self._ignore_selection_changed = False
+                self._updating_table_view_selection = False
