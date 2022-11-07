@@ -1,9 +1,9 @@
-from typing import Generator, List, Optional, Sequence, Tuple
+from typing import Generator, Optional
 
 from napari.layers import Layer as NapariLayer
 from pydantic import Field
 
-from .utils.parent_aware import (
+from .parent_aware import (
     NestedParentAwareEventedModel,
     NestedParentAwareEventedModelList,
     ParentAwareEventedModel,
@@ -46,16 +46,6 @@ class Dataset(NestedParentAwareEventedModel["Dataset"]):
     def __repr__(self) -> str:
         return self.name
 
-    def get_root(self) -> Tuple["Dataset", Sequence[str]]:
-        root_dataset = self
-        parent_dataset = root_dataset.get_parent()
-        dataset_names: List[str] = []
-        while parent_dataset is not None:
-            dataset_names.insert(0, root_dataset.name)
-            root_dataset = parent_dataset
-            parent_dataset = root_dataset.get_parent()
-        return root_dataset, dataset_names
-
     def iter_layers(self, recursive: bool = False) -> Generator["Layer", None, None]:
         yield from self.layers
         if recursive:
@@ -69,6 +59,46 @@ class Dataset(NestedParentAwareEventedModel["Dataset"]):
         if recursive:
             for child in self.children:
                 yield from child.iter_children(recursive=recursive)
+
+    def show(self) -> None:
+        for layer in self.iter_layers(recursive=True):
+            layer.show()
+
+    def hide(self) -> None:
+        for layer in self.iter_layers(recursive=True):
+            layer.hide()
+
+    def unload(self) -> None:
+        for layer in self.iter_layers(recursive=True):
+            layer.unload()
+
+    @property
+    def loaded(self) -> Optional[bool]:
+        n = 0
+        n_loaded = 0
+        for layer in self.iter_layers(recursive=True):
+            n += 1
+            if layer.loaded:
+                n_loaded += 1
+        if n_loaded == 0:
+            return False
+        if n_loaded == n:
+            return True
+        return None
+
+    @property
+    def visible(self) -> Optional[bool]:
+        n = 0
+        n_visible = 0
+        for layer in self.iter_layers(recursive=True):
+            n += 1
+            if layer.visible:
+                n_visible += 1
+        if n_visible == 0:
+            return False
+        if n_visible == n:
+            return True
+        return None
 
 
 class Layer(ParentAwareEventedModel[Dataset]):
@@ -93,3 +123,22 @@ class Layer(ParentAwareEventedModel[Dataset]):
 
     def __repr__(self) -> str:
         return self.name
+
+    def show(self) -> None:
+        assert self.napari_layer is not None
+        self.napari_layer.visible = True
+
+    def hide(self) -> None:
+        assert self.napari_layer is not None
+        self.napari_layer.visible = False
+
+    def unload(self) -> None:
+        self.napari_layer = None
+
+    @property
+    def loaded(self) -> bool:
+        return self.napari_layer is not None
+
+    @property
+    def visible(self) -> bool:
+        return self.napari_layer is not None and self.napari_layer.visible

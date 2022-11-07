@@ -5,18 +5,18 @@ from qtpy.QtWidgets import QTabWidget, QWidget
 
 from .._controller import DatasetController
 from ..model import Layer
-from ._layer_grouping_list_view import QLayerGroupingListView
+from ._layer_group_table_view import QLayerGroupTableView
 
 
-class QLayerGroupingsTabWidget(QTabWidget):
+class QLayerGroupTableViewsTabWidget(QTabWidget):
     def __init__(
         self, controller: DatasetController, parent: Optional[QWidget] = None
     ) -> None:
         super().__init__(parent)
         self._controller = controller
-        self._layer_grouping_list_views: Dict[str, QLayerGroupingListView] = {}
+        self._layer_group_table_views: Dict[str, QLayerGroupTableView] = {}
         assert controller.viewer is not None
-        self.addTab(QLayerGroupingListView(controller), "Layer")
+        self.addTab(QLayerGroupTableView(controller), "Layer")
         for layer in controller.current_layers:
             self._add_layer(layer)
         self._connect_events()
@@ -55,16 +55,16 @@ class QLayerGroupingsTabWidget(QTabWidget):
 
     def _add_layer(self, layer: Layer) -> None:
         for grouping in layer.groups.keys():
-            if grouping not in self._layer_grouping_list_views:
-                layer_grouping_list_view = QLayerGroupingListView(
+            if grouping not in self._layer_group_table_views:
+                layer_group_table_view = QLayerGroupTableView(
                     self._controller,
                     grouping=grouping,
                     close_callback=lambda: self._close_grouping(grouping),
                 )
-                self.addTab(layer_grouping_list_view, grouping)
-                self._layer_grouping_list_views[grouping] = layer_grouping_list_view
+                self.addTab(layer_group_table_view, grouping)
+                self._layer_group_table_views[grouping] = layer_group_table_view
 
     def _close_grouping(self, grouping: str) -> None:
-        layer_grouping_list_view = self._layer_grouping_list_views.pop(grouping)
-        layer_grouping_tab_index = self.indexOf(layer_grouping_list_view)
-        self.removeTab(layer_grouping_tab_index)
+        layer_group_table_view = self._layer_group_table_views.pop(grouping)
+        layer_group_table_view_tab_index = self.indexOf(layer_group_table_view)
+        self.removeTab(layer_group_table_view_tab_index)

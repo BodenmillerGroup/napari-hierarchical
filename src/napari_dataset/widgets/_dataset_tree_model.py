@@ -1,23 +1,20 @@
 import pickle
-from typing import Any, Iterable, List, NamedTuple, Optional
+from enum import IntEnum
+from typing import Any, Iterable, List, Optional
 
 from napari.utils.events import Event, EventedList
 from qtpy.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QObject, Qt
 
 from .._controller import DatasetController
 from ..model import Dataset
-from ..utils.parent_aware import NestedParentAwareEventedModelList
+from ..model.parent_aware import NestedParentAwareEventedModelList
 
 
 class QDatasetTreeModel(QAbstractItemModel):
-    class Column(NamedTuple):
-        field: str
-        title: str
-        editable: bool
-
-    COLUMNS = [
-        Column("name", "Dataset", True),
-    ]
+    class COLUMNS(IntEnum):
+        NAME = 0
+        LOADED = 1
+        VISIBLE = 2
 
     def __init__(
         self, controller: DatasetController, parent: Optional[QObject] = None
@@ -48,9 +45,8 @@ class QDatasetTreeModel(QAbstractItemModel):
         if index.isValid():
             dataset = index.internalPointer()
             assert isinstance(dataset, Dataset)
-            parent_dataset = dataset.get_parent()
-            if parent_dataset is not None:
-                return self.create_dataset_index(parent_dataset)
+            if dataset.parent is not None:
+                return self.create_dataset_index(dataset.parent)
         return QModelIndex()
 
     def rowCount(self, index: QModelIndex = QModelIndex()) -> int:
@@ -64,47 +60,96 @@ class QDatasetTreeModel(QAbstractItemModel):
         return len(self.COLUMNS)
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
-        if index.isValid() and role in (
-            Qt.ItemDataRole.DisplayRole,
-            Qt.ItemDataRole.EditRole,
-        ):
+        if index.isValid():
             dataset = index.internalPointer()
             assert isinstance(dataset, Dataset)
             assert 0 <= index.column() < len(self.COLUMNS)
-            column = self.COLUMNS[index.column()]
-            return getattr(dataset, column.field)
+            if index.column() == self.COLUMNS.NAME:
+                if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
+                    return dataset.name
+            elif index.column() == self.COLUMNS.LOADED:
+                if role == Qt.ItemDataRole.CheckStateRole:
+                    if dataset.loaded is None:
+                        return Qt.CheckState.PartiallyChecked
+                    if dataset.loaded:
+                        return Qt.CheckState.Checked
+                    return Qt.CheckState.Unchecked
+            elif index.column() == self.COLUMNS.VISIBLE:
+                if role == Qt.ItemDataRole.CheckStateRole:
+                    if dataset.visible is None:
+                        return Qt.CheckState.PartiallyChecked
+                    if dataset.visible:
+                        return Qt.CheckState.Checked
+                    return Qt.CheckState.Unchecked
         return None
 
     def setData(
         self, index: QModelIndex, value: Any, role: int = Qt.ItemDataRole.EditRole
     ) -> bool:
-        if index.isValid() and role == Qt.ItemDataRole.EditRole:
+        if index.isValid():
             dataset = index.internalPointer()
             assert isinstance(dataset, Dataset)
             assert 0 <= index.column() < len(self.COLUMNS)
-            column = self.COLUMNS[index.column()]
-            setattr(dataset, column.field, value)
-            return True
+            if index.column() == self.COLUMNS.NAME:
+                if role == Qt.ItemDataRole.EditRole:
+                    assert isinstance(value, str)
+                    dataset.name = value
+                    return True
+            elif index.column() == self.COLUMNS.LOADED:
+                if role == Qt.ItemDataRole.CheckStateRole:
+                    assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
+                    if value == Qt.CheckState.Checked:
+                        self._controller.load_dataset(dataset)
+                    else:
+                        dataset.unload()
+                    return True
+            elif index.column() == self.COLUMNS.VISIBLE:
+                if role == Qt.ItemDataRole.CheckStateRole:
+                    assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
+                    if value == Qt.CheckState.Checked:
+                        dataset.show()
+                    else:
+                        dataset.hide()
+                    return True
         return False
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
-        flags = super().flags(index)
         if index.isValid():
-            assert flags & Qt.ItemFlag.ItemIsEnabled
-            assert flags & Qt.ItemFlag.ItemIsSelectable
-            assert 0 <= index.column() < len(self.COLUMNS)
-            column = self.COLUMNS[index.column()]
-            if column.editable:
-                flags |= Qt.ItemFlag.ItemIsEditable
             dataset = index.internalPointer()
             assert isinstance(dataset, Dataset)
-            if all(
-                layer.napari_layer is not None
-                for layer in dataset.iter_layers(recursive=True)
-            ):
-                flags |= Qt.ItemFlag.ItemIsDragEnabled
-        flags |= Qt.ItemFlag.ItemIsDropEnabled
-        return flags
+            assert 0 <= index.column() < len(self.COLUMNS)
+            if index.column() == self.COLUMNS.NAME:
+                flags = (
+                    Qt.ItemFlag.ItemIsEnabled
+                    | Qt.ItemFlag.ItemIsSelectable
+                    | Qt.ItemFlag.ItemIsEditable
+                    | Qt.ItemFlag.ItemIsDropEnabled
+                )
+                if dataset.loaded:
+                    flags |= Qt.ItemFlag.ItemIsDragEnabled
+                return flags
+            if index.column() == self.COLUMNS.LOADED:
+                flags = (
+                    Qt.ItemFlag.ItemIsSelectable
+                    | Qt.ItemFlag.ItemIsUserCheckable
+                    | Qt.ItemFlag.ItemIsDropEnabled
+                )
+                if dataset.loaded or self._controller.can_load_dataset(dataset):
+                    flags |= Qt.ItemFlag.ItemIsEnabled
+                if dataset.loaded:
+                    flags |= Qt.ItemFlag.ItemIsDragEnabled
+                return flags
+            if index.column() == self.COLUMNS.VISIBLE:
+                flags = (
+                    Qt.ItemFlag.ItemIsSelectable
+                    | Qt.ItemFlag.ItemIsUserCheckable
+                    | Qt.ItemFlag.ItemIsDropEnabled
+                )
+                if dataset.loaded:
+                    flags |= Qt.ItemFlag.ItemIsEnabled
+                    flags |= Qt.ItemFlag.ItemIsDragEnabled
+                return flags
+        return super().flags(index) | Qt.ItemFlag.ItemIsDropEnabled
 
     def headerData(
         self,
@@ -112,9 +157,16 @@ class QDatasetTreeModel(QAbstractItemModel):
         orientation: Qt.Orientation,
         role: int = Qt.ItemDataRole.DisplayRole,
     ) -> Any:
-        if role == Qt.ItemDataRole.DisplayRole and 0 <= section < len(self.COLUMNS):
-            column = self.COLUMNS[section]
-            return column.title
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+        ):
+            if section == self.COLUMNS.NAME:
+                return "Dataset"
+            if section == self.COLUMNS.LOADED:
+                return "L"
+            if section == self.COLUMNS.VISIBLE:
+                return "V"
         return None
 
     def insertRows(
@@ -164,11 +216,9 @@ class QDatasetTreeModel(QAbstractItemModel):
             indices_stack = []
             dataset = index.internalPointer()
             assert isinstance(dataset, Dataset)
-            parent_dataset = dataset.get_parent()
-            while parent_dataset is not None:
-                indices_stack.append(parent_dataset.children.index(dataset))
-                dataset = parent_dataset
-                parent_dataset = dataset.get_parent()
+            while dataset.parent is not None:
+                indices_stack.append(dataset.parent.children.index(dataset))
+                dataset = dataset.parent
             indices_stack.append(self._controller.datasets.index(dataset))
             indices_stacks.append(indices_stack)
         data.setData("x-napari-dataset", pickle.dumps(indices_stacks))
@@ -217,9 +267,8 @@ class QDatasetTreeModel(QAbstractItemModel):
         return False
 
     def create_dataset_index(self, dataset: Dataset, column: int = 0) -> QModelIndex:
-        parent_dataset = dataset.get_parent()
-        if parent_dataset is not None:
-            parent_datasets = parent_dataset.children
+        if dataset.parent is not None:
+            parent_datasets = dataset.parent.children
         else:
             parent_datasets = self._controller.datasets
         row = parent_datasets.index(dataset)
@@ -250,9 +299,8 @@ class QDatasetTreeModel(QAbstractItemModel):
         assert isinstance(event.source_event, Event)
         datasets = event.source_event.source
         assert isinstance(datasets, NestedParentAwareEventedModelList)
-        parent_dataset = datasets.get_parent()
-        assert isinstance(parent_dataset, Dataset)
-        if datasets == parent_dataset.children:
+        assert isinstance(datasets.parent, Dataset)
+        if datasets == datasets.parent.children:
             self._process_datasets_event(event.source_event)
 
     def _process_datasets_event(self, event: Event, connect: bool = False) -> None:
@@ -263,9 +311,8 @@ class QDatasetTreeModel(QAbstractItemModel):
 
         def get_parent_index() -> QModelIndex:
             if isinstance(datasets, NestedParentAwareEventedModelList):
-                parent_dataset = datasets.get_parent()
-                assert isinstance(parent_dataset, Dataset)
-                return self.create_dataset_index(parent_dataset)
+                assert isinstance(datasets.parent, Dataset)
+                return self.create_dataset_index(datasets.parent)
             return QModelIndex()
 
         if event.type == "inserting":
@@ -334,14 +381,13 @@ class QDatasetTreeModel(QAbstractItemModel):
 
     def _on_dataset_nested_event(self, event: Event) -> None:
         assert isinstance(event.source_event, Event)
-        column = next(
-            (
-                column_index
-                for column_index, column in enumerate(self.COLUMNS)
-                if column.field == event.source_event.type
-            ),
-            None,
-        )
+        column = None
+        if event.source_event.type == "name":
+            column = self.COLUMNS.NAME
+        elif event.source_event.type == "loaded":  # TODO
+            column = self.COLUMNS.LOADED
+        elif event.source_event.type == "visible":  # TODO
+            column = self.COLUMNS.VISIBLE
         if column is not None:
             dataset = event.source_event.source
             assert isinstance(dataset, Dataset)

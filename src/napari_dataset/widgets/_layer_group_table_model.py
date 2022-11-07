@@ -1,14 +1,20 @@
+from enum import IntEnum
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
 from napari.utils.events import Event, EventedDict, EventedList
-from qtpy.QtCore import QAbstractListModel, QModelIndex, QObject, Qt
+from qtpy.QtCore import QAbstractTableModel, QModelIndex, QObject, Qt
 
 from .._controller import DatasetController
 from ..model import Layer
-from ..utils.parent_aware import ParentAwareEventedModelDict
+from ..model.parent_aware import ParentAwareEventedModelDict
 
 
-class QLayerGroupingListModel(QAbstractListModel):
+class QLayerGroupTableModel(QAbstractTableModel):
+    class COLUMNS(IntEnum):
+        NAME = 0
+        LOADED = 1
+        VISIBLE = 2
+
     def __init__(
         self,
         controller: DatasetController,
@@ -32,36 +38,90 @@ class QLayerGroupingListModel(QAbstractListModel):
         self._disconnect_events()
 
     def rowCount(self, index: QModelIndex = QModelIndex()) -> int:
-        return len(self._group_layers)
+        return len(self._groups)
+
+    def columnCount(self, index: QModelIndex = QModelIndex()) -> int:
+        return len(self.COLUMNS)
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
-        if index.isValid() and role in (
-            Qt.ItemDataRole.DisplayRole,
-            Qt.ItemDataRole.EditRole,
-        ):
+        if index.isValid():
             assert 0 <= index.row() < len(self._groups)
-            return self._groups[index.row()]
+            assert 0 <= index.column() < len(self.COLUMNS)
+            group = self._groups[index.row()]
+            if index.column() == self.COLUMNS.NAME:
+                if role == Qt.ItemDataRole.DisplayRole:
+                    return group
+            elif index.column() == self.COLUMNS.LOADED:
+                if role == Qt.ItemDataRole.CheckStateRole:
+                    layers = self._group_layers[group]
+                    loaded_layers = [layer for layer in layers if layer.loaded]
+                    if len(loaded_layers) == 0:
+                        return Qt.CheckState.Unchecked
+                    if len(loaded_layers) == len(layers):
+                        return Qt.CheckState.Checked
+                    return Qt.CheckState.PartiallyChecked
+            elif index.column() == self.COLUMNS.VISIBLE:
+                if role == Qt.ItemDataRole.CheckStateRole:
+                    layers = self._group_layers[group]
+                    visible_layers = [layer for layer in layers if layer.visible]
+                    if len(visible_layers) == 0:
+                        return Qt.CheckState.Unchecked
+                    if len(visible_layers) == len(layers):
+                        return Qt.CheckState.Checked
+                    return Qt.CheckState.PartiallyChecked
         return None
 
     def setData(
         self, index: QModelIndex, value: Any, role: int = Qt.ItemDataRole.EditRole
     ) -> bool:
-        if index.isValid() and role == Qt.ItemDataRole.EditRole:
+        if index.isValid():
             assert 0 <= index.row() < len(self._groups)
-            assert isinstance(value, str)
+            assert 0 <= index.column() < len(self.COLUMNS)
             group = self._groups[index.row()]
-            for layer in self._group_layers[group]:
-                self._set_layer_group(layer, value)
-            return True
+            if index.column() == self.COLUMNS.LOADED:
+                if role == Qt.ItemDataRole.CheckStateRole:
+                    assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
+                    if value == Qt.CheckState.Checked:
+                        for layer in self._group_layers[group]:
+                            self._controller.load_layer(layer)
+                    else:
+                        for layer in self._group_layers[group]:
+                            layer.unload()
+                    return True
+            elif index.column() == self.COLUMNS.VISIBLE:
+                if role == Qt.ItemDataRole.CheckStateRole:
+                    assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
+                    if value == Qt.CheckState.Checked:
+                        for layer in self._group_layers[group]:
+                            layer.show()
+                    else:
+                        for layer in self._group_layers[group]:
+                            layer.hide()
+                    return True
         return False
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
-        flags = super().flags(index)
         if index.isValid():
-            assert flags & Qt.ItemFlag.ItemIsEnabled
-            assert flags & Qt.ItemFlag.ItemIsSelectable
-            flags |= Qt.ItemFlag.ItemIsEditable
-        return flags
+            assert 0 <= index.row() < len(self._groups)
+            assert 0 <= index.column() < len(self.COLUMNS)
+            group = self._groups[index.row()]
+            if index.column() == self.COLUMNS.NAME:
+                flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+                return flags
+            if index.column() == self.COLUMNS.LOADED:
+                flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable
+                if all(
+                    layer.loaded or self._controller.can_load_layer(layer)
+                    for layer in self._group_layers[group]
+                ):
+                    flags |= Qt.ItemFlag.ItemIsEnabled
+                return flags
+            if index.column() == self.COLUMNS.VISIBLE:
+                flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable
+                if all(layer.loaded for layer in self._group_layers[group]):
+                    flags |= Qt.ItemFlag.ItemIsEnabled
+                return flags
+        return super().flags(index)
 
     def headerData(
         self,
@@ -69,9 +129,16 @@ class QLayerGroupingListModel(QAbstractListModel):
         orientation: Qt.Orientation,
         role: int = Qt.ItemDataRole.DisplayRole,
     ) -> Any:
-        assert section == 0
-        if role == Qt.ItemDataRole.DisplayRole:
-            return "Layer group"
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+        ):
+            if section == self.COLUMNS.NAME:
+                return "Layer group"
+            if section == self.COLUMNS.LOADED:
+                return "L"
+            if section == self.COLUMNS.VISIBLE:
+                return "V"
         return None
 
     def _connect_events(self) -> None:
@@ -168,7 +235,7 @@ class QLayerGroupingListModel(QAbstractListModel):
             return
         layer_groups = event.source
         assert isinstance(layer_groups, ParentAwareEventedModelDict)
-        layer = layer_groups.get_parent()
+        layer = layer_groups.parent
         assert isinstance(layer, Layer)
         if event.type == "changed" and event.key == self._grouping:
             assert isinstance(event.old_value, str)

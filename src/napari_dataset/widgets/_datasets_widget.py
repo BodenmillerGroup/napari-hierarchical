@@ -34,11 +34,11 @@ class QDatasetsWidget(QWidget):
         self._dataset_tool_bar.addWidget(spacer)
         self._dataset_tool_bar.addWidget(self._open_dataset_push_button)
         self._dataset_tool_bar.addWidget(self._create_dataset_push_button)
-        self._dataset_tree_widget = QDatasetTreeView(controller)
+        self._dataset_tree_view = QDatasetTreeView(controller)
         self._init_layout()
 
     def _init_layout(self) -> None:
         layout = QVBoxLayout()
         layout.addWidget(self._dataset_tool_bar)
-        layout.addWidget(self._dataset_tree_widget)
+        layout.addWidget(self._dataset_tree_view)
         self.setLayout(layout)

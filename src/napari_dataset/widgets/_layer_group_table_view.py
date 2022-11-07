@@ -2,14 +2,14 @@ from typing import Callable, Optional, Set
 
 from napari.utils.events import Event
 from qtpy.QtCore import QItemSelection, QSortFilterProxyModel
-from qtpy.QtWidgets import QListView, QWidget
+from qtpy.QtWidgets import QHeaderView, QTableView, QWidget
 
 from .._controller import DatasetController
 from ..model import Layer
-from ._layer_grouping_list_model import QLayerGroupingListModel
+from ._layer_group_table_model import QLayerGroupTableModel
 
 
-class QLayerGroupingListView(QListView):
+class QLayerGroupTableView(QTableView):
     def __init__(
         self,
         controller: DatasetController,
@@ -19,15 +19,33 @@ class QLayerGroupingListView(QListView):
     ) -> None:
         super().__init__(parent)
         self._controller = controller
-        self._model = QLayerGroupingListModel(
+        self._model = QLayerGroupTableModel(
             controller, grouping=grouping, close_callback=close_callback
         )
         self._ignore_layers_selection_changed_events = False
         self._ignore_selection_changed = False
         self._proxy_model = QSortFilterProxyModel()
         self._proxy_model.setSourceModel(self._model)
-        self._proxy_model.sort(0)
+        self._proxy_model.sort(QLayerGroupTableModel.COLUMNS.NAME)
         self.setModel(self._proxy_model)
+        self.verticalHeader().hide()
+        self.horizontalHeader().hide()
+        self.horizontalHeader().setStretchLastSection(False)
+        self.horizontalHeader().setSectionResizeMode(
+            QLayerGroupTableModel.COLUMNS.NAME, QHeaderView.ResizeMode.Stretch
+        )
+        self.horizontalHeader().setSectionResizeMode(
+            QLayerGroupTableModel.COLUMNS.LOADED,
+            QHeaderView.ResizeMode.ResizeToContents,
+        )
+        self.horizontalHeader().setSectionResizeMode(
+            QLayerGroupTableModel.COLUMNS.VISIBLE,
+            QHeaderView.ResizeMode.ResizeToContents,
+        )
+        self.setShowGrid(False)
+        self.setWordWrap(False)
+        self.setSelectionMode(QTableView.SelectionMode.ExtendedSelection)
+        self.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self._connect_events()
 

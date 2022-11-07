@@ -56,6 +56,18 @@ class DatasetController:
         dataset_writer_function = self._get_dataset_writer_function(path, dataset)
         return dataset_writer_function is not None
 
+    def can_load_dataset(self, dataset: Dataset) -> bool:
+        for layer in dataset.iter_layers(recursive=True):
+            if not self.can_load_layer(layer):
+                return False
+        return True
+
+    def can_save_dataset(self, dataset: Dataset) -> bool:
+        for layer in dataset.iter_layers(recursive=True):
+            if not self.can_save_layer(layer):
+                return False
+        return True
+
     def can_load_layer(self, layer: Layer) -> bool:
         layer_loader_function = self._get_layer_loader_function(layer)
         return layer_loader_function is not None
@@ -83,6 +95,18 @@ class DatasetController:
             dataset_writer_function(path, dataset)
         except Exception as e:
             raise DatasetControllerException(e)
+
+    def load_dataset(self, dataset: Dataset, pre_check: bool = True) -> None:
+        if pre_check and not self.can_load_dataset(dataset):
+            raise DatasetControllerException(f"Dataset cannot be loaded: {dataset}")
+        for layer in dataset.iter_layers(recursive=True):
+            self.load_layer(layer)
+
+    def save_dataset(self, dataset: Dataset, pre_check: bool = True) -> None:
+        if pre_check and not self.can_save_dataset(dataset):
+            raise DatasetControllerException(f"Dataset cannot be loaded: {dataset}")
+        for layer in dataset.iter_layers(recursive=True):
+            self.save_layer(layer)
 
     def load_layer(self, layer: Layer) -> None:
         layer_loader_function = self._get_layer_loader_function(layer)

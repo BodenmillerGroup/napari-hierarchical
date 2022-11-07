@@ -20,11 +20,12 @@ class ParentAware(Generic[PT]):
 
     # do not declare parent as property, to avoid conflicts with EventedModel fields
 
-    def get_parent(self) -> Optional[PT]:
-        return self._parent
-
     def set_parent(self, value: Optional[PT]) -> None:
         self._parent = value
+
+    @property
+    def parent(self) -> Optional[PT]:
+        return self._parent
 
 
 class ParentAwareEventedList(ParentAware[PT], EventedList[T]):
@@ -73,15 +74,13 @@ class NestedParentAwareEventedModel(ParentAwareEventedModel[NPAEMT]):
 
     def _emit_nested_event(self, source_event: Event) -> None:
         self._nested_event(source_event=source_event)
-        parent = self.get_parent()
-        if parent is not None:
-            parent._emit_nested_event(source_event)
+        if self.parent is not None:
+            self.parent._emit_nested_event(source_event)
 
     def _emit_nested_list_event(self, source_event: Event) -> None:
         self._nested_list_event(source_event=source_event)
-        parent = self.get_parent()
-        if parent is not None:
-            parent._emit_nested_list_event(source_event)
+        if self.parent is not None:
+            self.parent._emit_nested_list_event(source_event)
 
     @property
     def nested_event(self) -> EventEmitter:
@@ -98,20 +97,18 @@ class NestedParentAwareEventedModelList(ParentAwareEventedModelList[NPAEMT, NPAE
         self.events.connect(self._emit_parent_nested_list_event)
 
     def _emit_parent_nested_list_event(self, source_event: Event) -> None:
-        parent = self.get_parent()
-        if parent is not None:
-            parent._emit_nested_list_event(source_event)
+        if self.parent is not None:
+            self.parent._emit_nested_list_event(source_event)
 
     def __setitem__(
         self, key: Union[int, slice], value: Union[NPAEMT, Iterable[NPAEMT]]
     ) -> None:
         old_value = self[key]
-        parent = self.get_parent()
         if isinstance(value, ParentAwareEventedModel):
-            value.set_parent(parent)
+            value.set_parent(self.parent)
         else:
             for item in value:
-                item.set_parent(parent)
+                item.set_parent(self.parent)
         super().__setitem__(key, value)
         if isinstance(old_value, ParentAwareEventedModel):
             old_value.set_parent(None)
@@ -129,8 +126,7 @@ class NestedParentAwareEventedModelList(ParentAwareEventedModelList[NPAEMT, NPAE
                 old_item.set_parent(None)
 
     def insert(self, index: int, value: NPAEMT) -> None:
-        parent = self.get_parent()
-        value.set_parent(parent)
+        value.set_parent(self.parent)
         super().insert(index, value)
 
     def set_parent(self, value: Optional[NPAEMT]) -> None:

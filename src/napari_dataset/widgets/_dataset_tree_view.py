@@ -2,7 +2,7 @@ from typing import Optional, Set
 
 from napari.utils.events import Event, EventedList
 from qtpy.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange
-from qtpy.QtWidgets import QTreeView, QWidget
+from qtpy.QtWidgets import QHeaderView, QTreeView, QWidget
 
 from .._controller import DatasetController
 from ..model import Dataset
@@ -19,8 +19,19 @@ class QDatasetTreeView(QTreeView):
         self._ignore_selected_datasets_events = False
         self._ignore_selection_changed = False
         self.setModel(self._model)
-        self.setHeaderHidden(True)
+        self.header().hide()
+        self.header().setStretchLastSection(False)
+        self.header().setSectionResizeMode(
+            QDatasetTreeModel.COLUMNS.NAME, QHeaderView.ResizeMode.Stretch
+        )
+        self.header().setSectionResizeMode(
+            QDatasetTreeModel.COLUMNS.LOADED, QHeaderView.ResizeMode.ResizeToContents
+        )
+        self.header().setSectionResizeMode(
+            QDatasetTreeModel.COLUMNS.VISIBLE, QHeaderView.ResizeMode.ResizeToContents
+        )
         self.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)
+        self.setSelectionBehavior(QTreeView.SelectionBehavior.SelectRows)
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)

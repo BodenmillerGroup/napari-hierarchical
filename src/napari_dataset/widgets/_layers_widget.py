@@ -12,7 +12,7 @@ from qtpy.QtWidgets import (
 )
 
 from .._controller import controller
-from ._layer_groupings_tab_widget import QLayerGroupingsTabWidget
+from ._layer_group_table_views_tab_widget import QLayerGroupTableViewsTabWidget
 
 
 class QLayersWidget(QWidget):
@@ -36,11 +36,13 @@ class QLayersWidget(QWidget):
         self._layer_tool_bar.addWidget(self._add_points_layer_push_button)
         self._layer_tool_bar.addWidget(self._add_shapes_layer_push_button)
         self._layer_tool_bar.addWidget(self._add_labels_layer_push_button)
-        self._layer_groupings_tab_widget = QLayerGroupingsTabWidget(controller)
+        self._layer_group_table_views_tab_widget = QLayerGroupTableViewsTabWidget(
+            controller
+        )
         self._init_layout()
 
     def _init_layout(self) -> None:
         layout = QVBoxLayout()
         layout.addWidget(self._layer_tool_bar)
-        layout.addWidget(self._layer_groupings_tab_widget)
+        layout.addWidget(self._layer_group_table_views_tab_widget)
         self.setLayout(layout)

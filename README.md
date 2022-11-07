@@ -46,13 +46,11 @@ To install latest development version :
 
 ## Implementation
 
-This plugin implements reader, writer, and widget functionality. The reader reads a dataset (not actual image data, see description above) and opens the `QDatasetsWidget` and `QLayerGroupingsWidget` widgets in `napari_dataset.widgets`. The writer writes the selected layers (not the entire dataset, see description above). All operations are done through the `napari_dataset.controller` singleton instance, which "extends" the functionality of `napari.viewer.Viewer`.
+This plugin implements reader, writer, and widget functionality. The reader reads a dataset (not actual image data, see description above) and opens the `QDatasetsWidget` and `QLayersWidget` widgets in `napari_dataset.widgets`. The writer writes the selected layers (not the entire dataset, see description above). All operations are done through the `napari_dataset.controller` singleton instance, which "extends" the functionality of `napari.viewer.Viewer`.
 
 Dataset readers/writers are implemented as plugins using [pluggy](https://pluggy.readthedocs.io), similar to the [first-generation napari plugin engine](https://github.com/napari/napari-plugin-engine). Out of the box, this plugin ships with readers/writers for HDF5, Zarr, OME-Zarr, and imaging mass cytometry (IMC) file formats, implemented in `napari_dataset.contrib`. Additionally, the plugin also provides sample data for these file formats.
 
 The hierarchical dataset/layer model (composite tree pattern) is implemented in `napari_dataset.model`. For consistency with the original napari layer model, all model classes inherit from `napari.utils.events.EventedModel`. This renders the creation of lazy models (e.g. for representing the whole file system) impossible, which is intended. Despite implementing a composite tree pattern, the model classes do not inherit from `napari.utils.tree` to avoid problems due to multiple inheritance/pydantic.
-
-The Qt tree model is implemented in `napari_dataset.widgets.QDatasetTreeModel`. For listening to model changes, due to [problems with propagating events in nested EventedModel/EventedList hierarchies](https://napari.zulipchat.com/#narrow/stream/212875-general/topic/.E2.9C.94.20model.20events.20propagation), individual event handlers need to be registered for each Dataset instance.
 
 ## Contributing
 
