@@ -27,6 +27,8 @@ class DatasetController:
         self._current_layers: SelectableEventedList[Layer] = SelectableEventedList(
             basetype=Layer, lookup={str: lambda layer: layer.name}
         )
+        self._adding_viewer_layer = False
+        self._removing_viewer_layer = False
         self._updating_viewer_layers_selection = False
         self._updating_current_layers_selection = False
         self._datasets.events.connect(self._on_datasets_event)
@@ -37,6 +39,7 @@ class DatasetController:
 
     def __del__(self) -> None:
         if self._viewer is not None:
+            self._viewer.layers.events.disconnect(self._on_viewer_layers_event)
             self._viewer.layers.selection.events.changed.disconnect(
                 self._on_viewer_layers_selection_changed_event
             )
@@ -44,6 +47,7 @@ class DatasetController:
     def register_viewer(self, viewer: Viewer) -> None:
         assert self._viewer is None
         self._viewer = viewer
+        viewer.layers.events.connect(self._on_viewer_layers_event)
         viewer.layers.selection.events.changed.connect(
             self._on_viewer_layers_selection_changed_event
         )
@@ -96,21 +100,17 @@ class DatasetController:
         except Exception as e:
             raise DatasetControllerException(e)
 
-    def load_dataset_layers(self, dataset: Dataset) -> None:
-        if not self.can_load_dataset(dataset):
-            raise DatasetControllerException(f"Dataset cannot be loaded: {dataset}")
+    def load_dataset(self, dataset: Dataset) -> None:
         for layer in dataset.iter_layers(recursive=True):
             self.load_layer(layer)
 
-    def save_dataset_layers(self, dataset: Dataset) -> None:
-        if not self.can_save_dataset(dataset):
-            raise DatasetControllerException(f"Dataset cannot be loaded: {dataset}")
+    def unload_dataset(self, dataset: Dataset) -> None:
+        for layer in dataset.iter_layers(recursive=True):
+            self.unload_layer(layer)
+
+    def save_dataset(self, dataset: Dataset) -> None:
         for layer in dataset.iter_layers(recursive=True):
             self.save_layer(layer)
-
-    def close_dataset_layers(self, dataset: Dataset) -> None:
-        for layer in dataset.iter_layers(recursive=True):
-            self.close_layer(layer)
 
     def load_layer(self, layer: Layer) -> None:
         layer_loader_function = self._get_layer_loader_function(layer)
@@ -122,7 +122,21 @@ class DatasetController:
             raise DatasetControllerException(e)
         if layer.napari_layer is not None:
             assert self._viewer is not None
-            self._viewer.add_layer(layer.napari_layer)
+            self._adding_viewer_layer = True
+            try:
+                self._viewer.add_layer(layer.napari_layer)
+            finally:
+                self._adding_viewer_layer = False
+
+    def unload_layer(self, layer: Layer) -> None:
+        if layer.napari_layer is not None:
+            if self._viewer is not None and layer.napari_layer in self._viewer.layers:
+                self._removing_viewer_layer = True
+                try:
+                    self._viewer.layers.remove(layer.napari_layer)
+                finally:
+                    self._removing_viewer_layer = False
+            layer.napari_layer = None
 
     def save_layer(self, layer: Layer) -> None:
         if layer.napari_layer is None:
@@ -134,12 +148,6 @@ class DatasetController:
             layer_saver_function(layer)
         except Exception as e:
             raise DatasetControllerException(e)
-
-    def close_layer(self, layer: Layer) -> None:
-        if layer.napari_layer is not None:
-            if self._viewer is not None and layer.napari_layer in self._viewer.layers:
-                self._viewer.layers.remove(layer.napari_layer)
-            layer.napari_layer = None
 
     def _get_dataset_reader_function(
         self, path: PathLike
@@ -216,6 +224,9 @@ class DatasetController:
                 self._viewer.layers.selection = new_viewer_layers_selection
             finally:
                 self._updating_viewer_layers_selection = False
+
+    def _on_viewer_layers_event(self, event: Event) -> None:
+        pass  # TODO assign/remove napari layer to/from layer
 
     def _on_viewer_layers_selection_changed_event(self, event: Event) -> None:
         if self._viewer is not None and not self._updating_viewer_layers_selection:

@@ -6,7 +6,7 @@ from qtpy.QtCore import QAbstractTableModel, QModelIndex, QObject, Qt
 
 from .._controller import DatasetController
 from ..model import Layer
-from ..model.parent_aware import ParentAwareEventedModelDict
+from ..model.parent_aware import ParentAware
 
 
 class QLayerGroupTableModel(QAbstractTableModel):
@@ -86,7 +86,7 @@ class QLayerGroupTableModel(QAbstractTableModel):
                             self._controller.load_layer(layer)
                     else:
                         for layer in self._group_layers[group]:
-                            self._controller.close_layer(layer)
+                            self._controller.unload_layer(layer)
                     return True
             elif index.column() == self.COLUMNS.VISIBLE:
                 if role == Qt.ItemDataRole.CheckStateRole:
@@ -156,12 +156,16 @@ class QLayerGroupTableModel(QAbstractTableModel):
             layer.groups.events.connect(self._on_layer_groups_event)
         else:
             layer.events.name.connect(self._on_layer_name_event)
+        layer.events.loaded.connect(self._on_layer_loaded_event)
+        layer.events.visible.connect(self._on_layer_visible_event)
 
     def _disconnect_layer_events(self, layer: Layer) -> None:
         if self._grouping is not None:
             layer.groups.events.disconnect(self._on_layer_groups_event)
         else:
             layer.events.name.disconnect(self._on_layer_name_event)
+        layer.events.loaded.disconnect(self._on_layer_loaded_event)
+        layer.events.visible.disconnect(self._on_layer_visible_event)
 
     def _on_current_layers_event(self, event: Event) -> None:
         if not isinstance(event.sources[0], EventedList):
@@ -225,16 +229,34 @@ class QLayerGroupTableModel(QAbstractTableModel):
             for group, layers in self._group_layers.items()
             if event.source in layers
         )
-        self._remove_layer_from_group(event.source, old_group)
         group = self._get_layer_group(event.source)
+        self._remove_layer_from_group(event.source, old_group)
         self._add_layer_to_group(event.source, group)
+
+    def _on_layer_loaded_event(self, event: Event) -> None:
+        layer = event.source
+        assert isinstance(layer, Layer)
+        if self._grouping is None or self._grouping in layer.groups:
+            group = self._get_layer_group(layer)
+            row = self._groups.index(group)
+            index = self.createIndex(row, self.COLUMNS.LOADED)
+            self.dataChanged.emit(index, index)
+
+    def _on_layer_visible_event(self, event: Event) -> None:
+        layer = event.source
+        assert isinstance(layer, Layer)
+        if self._grouping is None or self._grouping in layer.groups:
+            group = self._get_layer_group(layer)
+            row = self._groups.index(group)
+            index = self.createIndex(row, self.COLUMNS.VISIBLE)
+            self.dataChanged.emit(index, index)
 
     def _on_layer_groups_event(self, event: Event) -> None:
         assert self._grouping is not None
         if not isinstance(event.sources[0], EventedDict):
             return
         layer_groups = event.source
-        assert isinstance(layer_groups, ParentAwareEventedModelDict)
+        assert isinstance(layer_groups, ParentAware)
         layer = layer_groups.parent
         assert isinstance(layer, Layer)
         if event.type == "changed" and event.key == self._grouping:

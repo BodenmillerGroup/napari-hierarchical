@@ -7,7 +7,7 @@ from qtpy.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QObject, Qt
 
 from .._controller import DatasetController
 from ..model import Dataset
-from ..model.parent_aware import NestedParentAwareEventedModelList
+from ..model.parent_aware import ParentAware
 
 
 class QDatasetTreeModel(QAbstractItemModel):
@@ -99,9 +99,9 @@ class QDatasetTreeModel(QAbstractItemModel):
                 if role == Qt.ItemDataRole.CheckStateRole:
                     assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
                     if value == Qt.CheckState.Checked:
-                        self._controller.load_dataset_layers(dataset)
+                        self._controller.load_dataset(dataset)
                     else:
-                        self._controller.close_dataset_layers(dataset)
+                        self._controller.unload_dataset(dataset)
                     return True
             elif index.column() == self.COLUMNS.VISIBLE:
                 if role == Qt.ItemDataRole.CheckStateRole:
@@ -296,12 +296,14 @@ class QDatasetTreeModel(QAbstractItemModel):
         self._process_datasets_event(event, connect=True)
 
     def _on_dataset_nested_list_event(self, event: Event) -> None:
-        assert isinstance(event.source_event, Event)
-        datasets = event.source_event.source
-        assert isinstance(datasets, NestedParentAwareEventedModelList)
+        assert isinstance(event.source_list_event, Event)
+        if not isinstance(event.source_list_event.sources[0], EventedList):
+            return
+        datasets = event.source_list_event.source
+        assert isinstance(datasets, ParentAware)
         assert isinstance(datasets.parent, Dataset)
         if datasets == datasets.parent.children:
-            self._process_datasets_event(event.source_event)
+            self._process_datasets_event(event.source_list_event)
 
     def _process_datasets_event(self, event: Event, connect: bool = False) -> None:
         if not isinstance(event.sources[0], EventedList):
@@ -310,7 +312,7 @@ class QDatasetTreeModel(QAbstractItemModel):
         assert isinstance(datasets, EventedList)
 
         def get_parent_index() -> QModelIndex:
-            if isinstance(datasets, NestedParentAwareEventedModelList):
+            if isinstance(datasets, ParentAware):
                 assert isinstance(datasets.parent, Dataset)
                 return self.create_dataset_index(datasets.parent)
             return QModelIndex()
@@ -384,9 +386,9 @@ class QDatasetTreeModel(QAbstractItemModel):
         column = None
         if event.source_event.type == "name":
             column = self.COLUMNS.NAME
-        elif event.source_event.type == "loaded":  # TODO
+        elif event.source_event.type == "loaded":
             column = self.COLUMNS.LOADED
-        elif event.source_event.type == "visible":  # TODO
+        elif event.source_event.type == "visible":
             column = self.COLUMNS.VISIBLE
         if column is not None:
             dataset = event.source_event.source

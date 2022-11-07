@@ -13,6 +13,8 @@ T = TypeVar("T")
 KT = TypeVar("KT")
 VT = TypeVar("VT")
 
+PAT = TypeVar("PAT", bound="ParentAware")
+
 
 class ParentAware(Generic[PT]):
     def __init__(self) -> None:
@@ -51,14 +53,6 @@ class ParentAwareEventedModel(ParentAware[PT], EventedModel):
         ParentAware.__init__(self)
 
 
-class ParentAwareEventedModelList(ParentAwareEventedList[PAEMT, T]):
-    pass
-
-
-class ParentAwareEventedModelDict(ParentAwareEventedDict[PAEMT, KT, VT]):
-    pass
-
-
 NPAEMT = TypeVar("NPAEMT", bound="NestedParentAwareEventedModel")
 
 
@@ -77,10 +71,10 @@ class NestedParentAwareEventedModel(ParentAwareEventedModel[NPAEMT]):
         if self.parent is not None:
             self.parent._emit_nested_event(source_event)
 
-    def _emit_nested_list_event(self, source_event: Event) -> None:
-        self._nested_list_event(source_event=source_event)
+    def _emit_nested_list_event(self, source_list_event: Event) -> None:
+        self._nested_list_event(source_list_event=source_list_event)
         if self.parent is not None:
-            self.parent._emit_nested_list_event(source_event)
+            self.parent._emit_nested_list_event(source_list_event)
 
     @property
     def nested_event(self) -> EventEmitter:
@@ -91,41 +85,50 @@ class NestedParentAwareEventedModel(ParentAwareEventedModel[NPAEMT]):
         return self._nested_list_event
 
 
-class NestedParentAwareEventedModelList(ParentAwareEventedModelList[NPAEMT, NPAEMT]):
+class NestedParentAwareEventedModelList(ParentAwareEventedList[NPAEMT, PAT]):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.events.connect(self._emit_parent_nested_list_event)
+        self.events.connect(self._on_event)
 
-    def _emit_parent_nested_list_event(self, source_event: Event) -> None:
+    def _on_event(self, event: Event) -> None:
         if self.parent is not None:
-            self.parent._emit_nested_list_event(source_event)
+            self.parent._emit_nested_list_event(event)
 
     def __setitem__(
-        self, key: Union[int, slice], value: Union[NPAEMT, Iterable[NPAEMT]]
+        self, key: Union[int, slice], value: Union[PAT, Iterable[PAT]]
     ) -> None:
         old_value = self[key]
-        if isinstance(value, ParentAwareEventedModel):
+        if isinstance(key, int):
+            assert isinstance(value, ParentAware)
             value.set_parent(self.parent)
         else:
+            assert isinstance(value, Iterable)
             for item in value:
+                assert isinstance(item, ParentAware)
                 item.set_parent(self.parent)
         super().__setitem__(key, value)
-        if isinstance(old_value, ParentAwareEventedModel):
+        if isinstance(key, int):
+            assert isinstance(old_value, ParentAware)
             old_value.set_parent(None)
         else:
+            assert isinstance(old_value, Iterable)
             for old_item in old_value:
+                assert isinstance(old_item, ParentAware)
                 old_item.set_parent(None)
 
     def __delitem__(self, key: Union[int, slice]) -> None:
         old_value = self[key]
         super().__delitem__(key)
-        if isinstance(old_value, ParentAwareEventedModel):
+        if isinstance(key, int):
+            assert isinstance(old_value, ParentAware)
             old_value.set_parent(None)
         else:
+            assert isinstance(old_value, Iterable)
             for old_item in old_value:
+                assert isinstance(old_item, ParentAware)
                 old_item.set_parent(None)
 
-    def insert(self, index: int, value: NPAEMT) -> None:
+    def insert(self, index: int, value: PAT) -> None:
         value.set_parent(self.parent)
         super().insert(index, value)
 

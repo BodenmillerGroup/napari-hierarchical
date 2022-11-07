@@ -7,21 +7,20 @@ from pydantic import Field
 from .parent_aware import (
     NestedParentAwareEventedModel,
     NestedParentAwareEventedModelList,
+    ParentAwareEventedDict,
     ParentAwareEventedModel,
-    ParentAwareEventedModelDict,
-    ParentAwareEventedModelList,
 )
 
 
 # do not inherit from napari.utils.tree to avoid conflicts with pydantic-based models
 class Dataset(NestedParentAwareEventedModel["Dataset"]):
     name: str
-    layers: ParentAwareEventedModelList["Dataset", "Layer"] = Field(
-        default_factory=lambda: ParentAwareEventedModelList(
+    layers: NestedParentAwareEventedModelList["Dataset", "Layer"] = Field(
+        default_factory=lambda: NestedParentAwareEventedModelList(
             basetype=Layer, lookup={str: lambda layer: layer.name}
         )
     )
-    children: NestedParentAwareEventedModelList["Dataset"] = Field(
+    children: NestedParentAwareEventedModelList["Dataset", "Dataset"] = Field(
         default_factory=lambda: NestedParentAwareEventedModelList(
             basetype=Dataset, lookup={str: lambda dataset: dataset.name}
         )
@@ -70,15 +69,15 @@ class Dataset(NestedParentAwareEventedModel["Dataset"]):
     def __repr__(self) -> str:
         return self.name
 
-    def _emit_loaded_event(self, source_event: Event) -> None:
-        self.events.loaded(value=self.loaded, source_event=source_event)
+    def _emit_loaded_event(self, source_layer_event: Event) -> None:
+        self.events.loaded(value=self.loaded, source_layer_event=source_layer_event)
         if self.parent is not None:
-            self.parent._emit_loaded_event(source_event)
+            self.parent._emit_loaded_event(source_layer_event)
 
-    def _emit_visible_event(self, source_event: Event) -> None:
-        self.events.visible(value=self.visible, source_event=source_event)
+    def _emit_visible_event(self, source_layer_event: Event) -> None:
+        self.events.visible(value=self.visible, source_layer_event=source_layer_event)
         if self.parent is not None:
-            self.parent._emit_visible_event(source_event)
+            self.parent._emit_visible_event(source_layer_event)
 
     @property
     def loaded(self) -> Optional[bool]:
@@ -112,8 +111,8 @@ class Dataset(NestedParentAwareEventedModel["Dataset"]):
 class Layer(ParentAwareEventedModel[Dataset]):
     name: str
     napari_layer: Optional[NapariLayer] = Field(default=None, exclude=True)
-    groups: ParentAwareEventedModelDict["Layer", str, str] = Field(
-        default_factory=lambda: ParentAwareEventedModelDict(basetype=str)
+    groups: ParentAwareEventedDict["Layer", str, str] = Field(
+        default_factory=lambda: ParentAwareEventedDict(basetype=str)
     )  # grouping --> group
 
     def __init__(self, **kwargs) -> None:
@@ -122,6 +121,8 @@ class Layer(ParentAwareEventedModel[Dataset]):
         self.events.add(loaded=Event, visible=Event)
         self.events.name.connect(self._on_name_event)
         self.events.napari_layer.connect(self._on_napari_layer_event)
+        self.events.loaded.connect(self._on_loaded_event)
+        self.events.visible.connect(self._on_visible_event)
 
     @staticmethod
     def from_layer(layer: "Layer") -> "Layer":
@@ -161,10 +162,10 @@ class Layer(ParentAwareEventedModel[Dataset]):
             self.napari_layer.name = self.name
 
     def _on_napari_layer_event(self, event: Event) -> None:
-        self._emit_loaded_event(event)
-        self._emit_visible_event(event)
         if self.napari_layer is not None:
             self.name = self.napari_layer.name
+        self._emit_loaded_event(event)
+        self._emit_visible_event(event)
 
     def _on_napari_layer_name_event(self, event: Event) -> None:
         assert self.napari_layer is not None
@@ -174,15 +175,19 @@ class Layer(ParentAwareEventedModel[Dataset]):
         assert self.napari_layer is not None
         self._emit_visible_event(event)
 
+    def _on_loaded_event(self, event: Event) -> None:
+        if self.parent is not None:
+            self.parent._emit_loaded_event(event)
+
+    def _on_visible_event(self, event: Event) -> None:
+        if self.parent is not None:
+            self.parent._emit_visible_event(event)
+
     def _emit_loaded_event(self, source_event: Event) -> None:
         self.events.loaded(value=self.loaded, source_event=source_event)
-        if self.parent is not None:
-            self.parent._emit_loaded_event(source_event)
 
     def _emit_visible_event(self, source_event: Event) -> None:
         self.events.visible(value=self.visible, source_event=source_event)
-        if self.parent is not None:
-            self.parent._emit_visible_event(source_event)
 
     @property
     def loaded(self) -> bool:
