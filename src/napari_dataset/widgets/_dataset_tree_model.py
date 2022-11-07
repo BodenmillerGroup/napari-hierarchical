@@ -99,9 +99,9 @@ class QDatasetTreeModel(QAbstractItemModel):
                 if role == Qt.ItemDataRole.CheckStateRole:
                     assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
                     if value == Qt.CheckState.Checked:
-                        self._controller.load_dataset(dataset)
+                        self._controller.load_dataset_layers(dataset)
                     else:
-                        dataset.unload()
+                        self._controller.close_dataset_layers(dataset)
                     return True
             elif index.column() == self.COLUMNS.VISIBLE:
                 if role == Qt.ItemDataRole.CheckStateRole:

@@ -96,17 +96,21 @@ class DatasetController:
         except Exception as e:
             raise DatasetControllerException(e)
 
-    def load_dataset(self, dataset: Dataset, pre_check: bool = True) -> None:
-        if pre_check and not self.can_load_dataset(dataset):
+    def load_dataset_layers(self, dataset: Dataset) -> None:
+        if not self.can_load_dataset(dataset):
             raise DatasetControllerException(f"Dataset cannot be loaded: {dataset}")
         for layer in dataset.iter_layers(recursive=True):
             self.load_layer(layer)
 
-    def save_dataset(self, dataset: Dataset, pre_check: bool = True) -> None:
-        if pre_check and not self.can_save_dataset(dataset):
+    def save_dataset_layers(self, dataset: Dataset) -> None:
+        if not self.can_save_dataset(dataset):
             raise DatasetControllerException(f"Dataset cannot be loaded: {dataset}")
         for layer in dataset.iter_layers(recursive=True):
             self.save_layer(layer)
+
+    def close_dataset_layers(self, dataset: Dataset) -> None:
+        for layer in dataset.iter_layers(recursive=True):
+            self.close_layer(layer)
 
     def load_layer(self, layer: Layer) -> None:
         layer_loader_function = self._get_layer_loader_function(layer)
@@ -130,6 +134,12 @@ class DatasetController:
             layer_saver_function(layer)
         except Exception as e:
             raise DatasetControllerException(e)
+
+    def close_layer(self, layer: Layer) -> None:
+        if layer.napari_layer is not None:
+            if self._viewer is not None and layer.napari_layer in self._viewer.layers:
+                self._viewer.layers.remove(layer.napari_layer)
+            layer.napari_layer = None
 
     def _get_dataset_reader_function(
         self, path: PathLike

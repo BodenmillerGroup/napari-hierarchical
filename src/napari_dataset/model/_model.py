@@ -1,6 +1,7 @@
-from typing import Generator, Optional
+from typing import Any, Generator, Optional
 
 from napari.layers import Layer as NapariLayer
+from napari.utils.events import Event
 from pydantic import Field
 
 from .parent_aware import (
@@ -30,6 +31,7 @@ class Dataset(NestedParentAwareEventedModel["Dataset"]):
         super().__init__(**kwargs)
         self.layers.set_parent(self)
         self.children.set_parent(self)
+        self.events.add(loaded=Event, visible=Event)
 
     @staticmethod
     def from_dataset(dataset: "Dataset") -> "Dataset":
@@ -40,11 +42,13 @@ class Dataset(NestedParentAwareEventedModel["Dataset"]):
         )
         return new_dataset
 
-    def __hash__(self) -> int:
-        return id(self)
+    def show(self) -> None:
+        for layer in self.iter_layers(recursive=True):
+            layer.show()
 
-    def __repr__(self) -> str:
-        return self.name
+    def hide(self) -> None:
+        for layer in self.iter_layers(recursive=True):
+            layer.hide()
 
     def iter_layers(self, recursive: bool = False) -> Generator["Layer", None, None]:
         yield from self.layers
@@ -60,17 +64,21 @@ class Dataset(NestedParentAwareEventedModel["Dataset"]):
             for child in self.children:
                 yield from child.iter_children(recursive=recursive)
 
-    def show(self) -> None:
-        for layer in self.iter_layers(recursive=True):
-            layer.show()
+    def __hash__(self) -> int:
+        return id(self)
 
-    def hide(self) -> None:
-        for layer in self.iter_layers(recursive=True):
-            layer.hide()
+    def __repr__(self) -> str:
+        return self.name
 
-    def unload(self) -> None:
-        for layer in self.iter_layers(recursive=True):
-            layer.unload()
+    def _emit_loaded_event(self, source_event: Event) -> None:
+        self.events.loaded(value=self.loaded, source_event=source_event)
+        if self.parent is not None:
+            self.parent._emit_loaded_event(source_event)
+
+    def _emit_visible_event(self, source_event: Event) -> None:
+        self.events.visible(value=self.visible, source_event=source_event)
+        if self.parent is not None:
+            self.parent._emit_visible_event(source_event)
 
     @property
     def loaded(self) -> Optional[bool]:
@@ -111,18 +119,15 @@ class Layer(ParentAwareEventedModel[Dataset]):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.groups.set_parent(self)
+        self.events.add(loaded=Event, visible=Event)
+        self.events.name.connect(self._on_name_event)
+        self.events.napari_layer.connect(self._on_napari_layer_event)
 
     @staticmethod
     def from_layer(layer: "Layer") -> "Layer":
         new_layer = Layer(name=layer.name, napari_layer=layer.napari_layer)
         new_layer.groups.update(layer.groups)
         return new_layer
-
-    def __hash__(self) -> int:
-        return id(self)
-
-    def __repr__(self) -> str:
-        return self.name
 
     def show(self) -> None:
         assert self.napari_layer is not None
@@ -132,8 +137,52 @@ class Layer(ParentAwareEventedModel[Dataset]):
         assert self.napari_layer is not None
         self.napari_layer.visible = False
 
-    def unload(self) -> None:
-        self.napari_layer = None
+    def __hash__(self) -> int:
+        return id(self)
+
+    def __repr__(self) -> str:
+        return self.name
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "napari_layer" and self.napari_layer is not None:
+            self.napari_layer.events.name.disconnect(self._on_napari_layer_name_event)
+            self.napari_layer.events.visible.disconnect(
+                self._on_napari_layer_visible_event
+            )
+        super().__setattr__(name, value)
+        if name == "napari_layer" and self.napari_layer is not None:
+            self.napari_layer.events.name.connect(self._on_napari_layer_name_event)
+            self.napari_layer.events.visible.connect(
+                self._on_napari_layer_visible_event
+            )
+
+    def _on_name_event(self, event: Event) -> None:
+        if self.napari_layer is not None:
+            self.napari_layer.name = self.name
+
+    def _on_napari_layer_event(self, event: Event) -> None:
+        self._emit_loaded_event(event)
+        self._emit_visible_event(event)
+        if self.napari_layer is not None:
+            self.name = self.napari_layer.name
+
+    def _on_napari_layer_name_event(self, event: Event) -> None:
+        assert self.napari_layer is not None
+        self.name = self.napari_layer.name
+
+    def _on_napari_layer_visible_event(self, event: Event) -> None:
+        assert self.napari_layer is not None
+        self._emit_visible_event(event)
+
+    def _emit_loaded_event(self, source_event: Event) -> None:
+        self.events.loaded(value=self.loaded, source_event=source_event)
+        if self.parent is not None:
+            self.parent._emit_loaded_event(source_event)
+
+    def _emit_visible_event(self, source_event: Event) -> None:
+        self.events.visible(value=self.visible, source_event=source_event)
+        if self.parent is not None:
+            self.parent._emit_visible_event(source_event)
 
     @property
     def loaded(self) -> bool:

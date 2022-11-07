@@ -86,7 +86,7 @@ class QLayerGroupTableModel(QAbstractTableModel):
                             self._controller.load_layer(layer)
                     else:
                         for layer in self._group_layers[group]:
-                            layer.unload()
+                            self._controller.close_layer(layer)
                     return True
             elif index.column() == self.COLUMNS.VISIBLE:
                 if role == Qt.ItemDataRole.CheckStateRole:
