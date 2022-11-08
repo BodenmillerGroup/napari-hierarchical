@@ -4,7 +4,7 @@ from typing import Optional, Sequence, Union
 
 from napari.layers import Image as NapariImageLayer
 
-from napari_dataset.model import Dataset, Layer
+from napari_dataset.model import Dataset
 
 from .model import HDF5Layer
 
@@ -21,14 +21,6 @@ PathLike = Union[str, os.PathLike]
 def read_hdf5_dataset(path: PathLike) -> Dataset:
     with h5py.File(path) as f:
         return _create_dataset(str(path), [], f, name=Path(path).name)
-
-
-def load_hdf5_layer(layer: Layer) -> None:
-    if not isinstance(layer, HDF5Layer):
-        raise TypeError(f"Not an HDF5 layer: {layer}")
-    with h5py.File(layer.hdf5_file) as f:
-        data = da.from_array(f[layer.hdf5_path])
-    layer.napari_layer = NapariImageLayer(name=layer.name, data=data)
 
 
 def _create_dataset(
@@ -61,11 +53,16 @@ def _create_layer(
     hdf5_path = "/".join(hdf5_names)
     if name is None:
         name = f"{Path(hdf5_file).name} [/{hdf5_path}]"
-    layer = HDF5Layer(name=name, hdf5_file=hdf5_file, hdf5_path=hdf5_path)
+    napari_layer_data = da.from_array(hdf5_dataset)
+    napari_layer = NapariImageLayer(name=name, data=napari_layer_data)
+    layer = HDF5Layer(
+        name=name,
+        loaded_napari_layer=napari_layer,
+        hdf5_file=hdf5_file,
+        hdf5_path=hdf5_path,
+    )
     if len(hdf5_names) > 0:
-        layer.groups["HDF5 Dataset"] = (
-            "/*" * (len(hdf5_names) - 1) + "/" + hdf5_names[-1]
-        )
+        layer.groups["Path"] = "/*" * (len(hdf5_names) - 1) + "/" + hdf5_names[-1]
     else:
-        layer.groups["HDF5 Dataset"] = "/"
+        layer.groups["Path"] = "/"
     return layer

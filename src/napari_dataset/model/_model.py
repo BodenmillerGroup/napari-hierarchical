@@ -110,7 +110,10 @@ class Dataset(NestedParentAwareEventedModel["Dataset"]):
 
 class Layer(ParentAwareEventedModel[Dataset]):
     name: str
-    napari_layer: Optional[NapariLayer] = Field(default=None, exclude=True)
+    napari_layer: Optional[NapariLayer] = None
+    loaded_napari_layer: Optional[NapariLayer] = Field(
+        default=None, allow_mutation=False
+    )
     groups: ParentAwareEventedDict["Layer", str, str] = Field(
         default_factory=lambda: ParentAwareEventedDict(basetype=str)
     )  # grouping --> group
@@ -126,7 +129,11 @@ class Layer(ParentAwareEventedModel[Dataset]):
 
     @staticmethod
     def from_layer(layer: "Layer") -> "Layer":
-        new_layer = Layer(name=layer.name, napari_layer=layer.napari_layer)
+        new_layer = Layer(
+            name=layer.name,
+            napari_layer=layer.napari_layer,
+            loaded_napari_layer=layer.loaded_napari_layer,
+        )
         new_layer.groups.update(layer.groups)
         return new_layer
 

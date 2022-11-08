@@ -52,7 +52,7 @@ def read_imc_dataset(path: PathLike) -> Dataset:
                         channel_index=channel_index,
                     )
                     acquisition_layer.groups[
-                        "IMC Channel"
+                        "Channel"
                     ] = f"[C{channel_index:02d}] {channel_name} {channel_label}"
                     acquisition_dataset.layers.append(acquisition_layer)
                 acquisitions_dataset.children.append(acquisition_dataset)

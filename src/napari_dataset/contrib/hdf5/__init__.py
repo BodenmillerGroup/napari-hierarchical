@@ -4,17 +4,9 @@ from typing import Optional, Union
 
 from pluggy import HookimplMarker
 
-from napari_dataset.hookspecs import (
-    DatasetReaderFunction,
-    DatasetWriterFunction,
-    LayerLoaderFunction,
-    LayerSaverFunction,
-)
-from napari_dataset.model import Dataset, Layer
+from napari_dataset.hookspecs import DatasetReaderFunction
 
-from ._reader import load_hdf5_layer, read_hdf5_dataset
-from ._writer import save_hdf5_layer, write_hdf5_dataset
-from .model import HDF5Layer
+from ._reader import read_hdf5_dataset
 
 try:
     import h5py
@@ -37,33 +29,4 @@ def napari_dataset_get_dataset_reader(
     return None
 
 
-@hookimpl
-def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunction]:
-    if available and isinstance(layer, HDF5Layer):
-        return load_hdf5_layer
-    return None
-
-
-@hookimpl
-def napari_dataset_get_dataset_writer(
-    path: PathLike, dataset: Dataset
-) -> Optional[DatasetWriterFunction]:
-    return None  # TODO
-
-
-@hookimpl
-def napari_dataset_get_layer_saver(layer: Layer) -> Optional[LayerSaverFunction]:
-    return None  # TODO
-
-
-__all__ = [
-    "available",
-    "read_hdf5_dataset",
-    "load_hdf5_layer",
-    "write_hdf5_dataset",
-    "save_hdf5_layer",
-    "napari_dataset_get_dataset_reader",
-    "napari_dataset_get_layer_loader",
-    "napari_dataset_get_dataset_writer",
-    "napari_dataset_get_layer_saver",
-]
+__all__ = ["available", "read_hdf5_dataset", "napari_dataset_get_dataset_reader"]

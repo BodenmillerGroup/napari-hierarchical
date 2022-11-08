@@ -53,12 +53,10 @@ class DatasetController:
         )
 
     def can_read_dataset(self, path: PathLike) -> bool:
-        dataset_reader_function = self._get_dataset_reader_function(path)
-        return dataset_reader_function is not None
+        return self._get_dataset_reader_function(path) is not None
 
     def can_write_dataset(self, path: PathLike, dataset: Dataset) -> bool:
-        dataset_writer_function = self._get_dataset_writer_function(path, dataset)
-        return dataset_writer_function is not None
+        return self._get_dataset_writer_function(path, dataset) is not None
 
     def can_load_dataset(self, dataset: Dataset) -> bool:
         for layer in dataset.iter_layers(recursive=True):
@@ -73,12 +71,13 @@ class DatasetController:
         return True
 
     def can_load_layer(self, layer: Layer) -> bool:
-        layer_loader_function = self._get_layer_loader_function(layer)
-        return layer_loader_function is not None
+        return (
+            layer.loaded_napari_layer is not None
+            or self._get_layer_loader_function(layer) is not None
+        )
 
     def can_save_layer(self, layer: Layer) -> bool:
-        layer_saver_function = self._get_layer_saver_function(layer)
-        return layer_saver_function is not None
+        return self._get_layer_saver_function(layer) is not None
 
     def read_dataset(self, path: PathLike) -> Dataset:
         dataset_reader_function = self._get_dataset_reader_function(path)
@@ -113,13 +112,16 @@ class DatasetController:
             self.save_layer(layer)
 
     def load_layer(self, layer: Layer) -> None:
-        layer_loader_function = self._get_layer_loader_function(layer)
-        if layer_loader_function is None:
-            raise DatasetControllerException(f"No layer loader found for {layer}")
-        try:
-            layer_loader_function(layer)
-        except Exception as e:
-            raise DatasetControllerException(e)
+        if layer.loaded_napari_layer is not None:
+            layer.napari_layer = layer.loaded_napari_layer
+        else:
+            layer_loader_function = self._get_layer_loader_function(layer)
+            if layer_loader_function is None:
+                raise DatasetControllerException(f"No layer loader found for {layer}")
+            try:
+                layer_loader_function(layer)
+            except Exception as e:
+                raise DatasetControllerException(e)
         if layer.napari_layer is not None:
             assert self._viewer is not None
             self._adding_viewer_layer = True
@@ -152,32 +154,24 @@ class DatasetController:
     def _get_dataset_reader_function(
         self, path: PathLike
     ) -> Optional[hookspecs.DatasetReaderFunction]:
-        dataset_reader_function = self._pm.hook.napari_dataset_get_dataset_reader(
-            path=path
-        )
-        return dataset_reader_function
+        return self._pm.hook.napari_dataset_get_dataset_reader(path=path)
 
     def _get_dataset_writer_function(
         self, path: PathLike, dataset: Dataset
     ) -> Optional[hookspecs.DatasetWriterFunction]:
-        dataset_writer_function = self._pm.hook.napari_dataset_get_dataset_writer(
+        return self._pm.hook.napari_dataset_get_dataset_writer(
             path=path, dataset=dataset
         )
-        return dataset_writer_function
 
     def _get_layer_loader_function(
         self, layer: Layer
     ) -> Optional[hookspecs.LayerLoaderFunction]:
-        layer_loader_function = self._pm.hook.napari_dataset_get_layer_loader(
-            layer=layer
-        )
-        return layer_loader_function
+        return self._pm.hook.napari_dataset_get_layer_loader(layer=layer)
 
     def _get_layer_saver_function(
         self, layer: Layer
     ) -> Optional[hookspecs.LayerSaverFunction]:
-        layer_saver_function = self._pm.hook.napari_dataset_get_layer_saver(layer=layer)
-        return layer_saver_function
+        return self._pm.hook.napari_dataset_get_layer_saver(layer=layer)
 
     def _on_datasets_event(self, event: Event) -> None:
         if not isinstance(event.sources[0], EventedList):

@@ -4,17 +4,9 @@ from typing import Optional, Union
 
 from pluggy import HookimplMarker
 
-from napari_dataset.hookspecs import (
-    DatasetReaderFunction,
-    DatasetWriterFunction,
-    LayerLoaderFunction,
-    LayerSaverFunction,
-)
-from napari_dataset.model import Dataset, Layer
+from napari_dataset.hookspecs import DatasetReaderFunction
 
-from ._reader import load_zarr_layer, read_zarr_dataset
-from ._writer import save_zarr_layer, write_zarr_dataset
-from .model import ZarrLayer
+from ._reader import read_zarr_dataset
 
 try:
     import zarr
@@ -37,33 +29,4 @@ def napari_dataset_get_dataset_reader(
     return None
 
 
-@hookimpl
-def napari_dataset_get_layer_loader(layer: Layer) -> Optional[LayerLoaderFunction]:
-    if available and isinstance(layer, ZarrLayer):
-        return load_zarr_layer
-    return None
-
-
-@hookimpl
-def napari_dataset_get_dataset_writer(
-    path: PathLike, dataset: Dataset
-) -> Optional[DatasetWriterFunction]:
-    return None  # TODO
-
-
-@hookimpl
-def napari_dataset_get_layer_saver(layer: Layer) -> Optional[LayerSaverFunction]:
-    return None  # TODO
-
-
-__all__ = [
-    "available",
-    "read_zarr_dataset",
-    "load_zarr_layer",
-    "write_zarr_dataset",
-    "save_zarr_layer",
-    "napari_dataset_get_dataset_reader",
-    "napari_dataset_get_layer_loader",
-    "napari_dataset_get_dataset_writer",
-    "napari_dataset_get_layer_saver",
-]
+__all__ = ["available", "read_zarr_dataset", "napari_dataset_get_dataset_reader"]

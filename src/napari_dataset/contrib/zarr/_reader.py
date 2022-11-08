@@ -4,7 +4,7 @@ from typing import Optional, Sequence, Union
 
 from napari.layers import Image as NapariImageLayer
 
-from napari_dataset.model import Dataset, Layer
+from napari_dataset.model import Dataset
 
 from .model import ZarrLayer
 
@@ -28,14 +28,6 @@ def read_zarr_dataset(path: PathLike) -> Dataset:
     if isinstance(z, zarr.Group):
         return _create_dataset(str(path), [], z, name=Path(path).name)
     raise TypeError(f"Unsupported Zarr type: {type(z)}")
-
-
-def load_zarr_layer(layer: Layer) -> None:
-    if not isinstance(layer, ZarrLayer):
-        raise TypeError(f"Not a Zarr layer: {layer}")
-    z = zarr.open(store=layer.zarr_file, mode="r")
-    data = da.from_zarr(z[layer.zarr_path])
-    layer.napari_layer = NapariImageLayer(name=layer.name, data=data)
 
 
 def _create_dataset(
@@ -67,9 +59,16 @@ def _create_layer(
     zarr_path = "/".join(zarr_names)
     if name is None:
         name = f"{Path(zarr_file).name} [/{zarr_path}]"
-    layer = ZarrLayer(name=name, zarr_file=zarr_file, zarr_path=zarr_path)
+    napari_layer_data = da.from_zarr(zarr_array)
+    napari_layer = NapariImageLayer(name=name, data=napari_layer_data)
+    layer = ZarrLayer(
+        name=name,
+        loaded_napari_layer=napari_layer,
+        zarr_file=zarr_file,
+        zarr_path=zarr_path,
+    )
     if len(zarr_names) > 0:
-        layer.groups["Zarr Array"] = "/*" * (len(zarr_names) - 1) + "/" + zarr_names[-1]
+        layer.groups["Path"] = "/*" * (len(zarr_names) - 1) + "/" + zarr_names[-1]
     else:
-        layer.groups["Zarr Array"] = "/"
+        layer.groups["Path"] = "/"
     return layer
