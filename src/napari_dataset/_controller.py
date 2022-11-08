@@ -112,6 +112,7 @@ class DatasetController:
             self.save_layer(layer)
 
     def load_layer(self, layer: Layer) -> None:
+        assert self._viewer is not None
         if layer.loaded_napari_layer is not None:
             layer.napari_layer = layer.loaded_napari_layer
         else:
@@ -122,13 +123,12 @@ class DatasetController:
                 layer_loader_function(layer)
             except Exception as e:
                 raise DatasetControllerException(e)
-        if layer.napari_layer is not None:
-            assert self._viewer is not None
-            self._adding_viewer_layer = True
-            try:
-                self._viewer.add_layer(layer.napari_layer)
-            finally:
-                self._adding_viewer_layer = False
+        assert layer.napari_layer is not None
+        self._adding_viewer_layer = True
+        try:
+            self._viewer.add_layer(layer.napari_layer)
+        finally:
+            self._adding_viewer_layer = False
 
     def unload_layer(self, layer: Layer) -> None:
         if layer.napari_layer is not None:
@@ -220,7 +220,33 @@ class DatasetController:
                 self._updating_viewer_layers_selection = False
 
     def _on_viewer_layers_event(self, event: Event) -> None:
-        pass  # TODO assign/remove napari layer to/from layer
+        if event.type == "inserted":
+            napari_layer = event.value
+            assert isinstance(napari_layer, NapariLayer)
+            layer = napari_layer.metadata.get("napari-dataset-layer")
+            if layer is not None:
+                assert isinstance(layer, Layer)
+                layer.napari_layer = napari_layer
+        elif event.type == "removed":
+            napari_layer = event.value
+            assert isinstance(napari_layer, NapariLayer)
+            layer = napari_layer.metadata.get("napari-dataset-layer")
+            if layer is not None:
+                assert isinstance(layer, Layer)
+                layer.napari_layer = None
+        elif event.type == "changed":
+            old_napari_layer = event.old_value
+            assert isinstance(old_napari_layer, NapariLayer)
+            old_layer = old_napari_layer.metadata.get("napari-dataset-layer")
+            if old_layer is not None:
+                assert isinstance(old_layer, Layer)
+                old_layer.napari_layer = None
+            napari_layer = event.value
+            assert isinstance(napari_layer, NapariLayer)
+            layer = napari_layer.metadata.get("napari-dataset-layer")
+            if layer is not None:
+                assert isinstance(layer, Layer)
+                layer.napari_layer = napari_layer
 
     def _on_viewer_layers_selection_changed_event(self, event: Event) -> None:
         if self._viewer is not None and not self._updating_viewer_layers_selection:

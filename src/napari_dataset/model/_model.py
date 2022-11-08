@@ -157,8 +157,10 @@ class Layer(ParentAwareEventedModel[Dataset]):
             self.napari_layer.events.visible.disconnect(
                 self._on_napari_layer_visible_event
             )
+            del self.napari_layer.metadata["napari-dataset-layer"]
         super().__setattr__(name, value)
         if name == "napari_layer" and self.napari_layer is not None:
+            self.napari_layer.metadata["napari-dataset-layer"] = self
             self.napari_layer.events.name.connect(self._on_napari_layer_name_event)
             self.napari_layer.events.visible.connect(
                 self._on_napari_layer_visible_event
