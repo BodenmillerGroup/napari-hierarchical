@@ -53,11 +53,11 @@ def _create_layer(
     hdf5_path = "/".join(hdf5_names)
     if name is None:
         name = f"{Path(hdf5_file).name} [/{hdf5_path}]"
-    napari_layer_data = da.from_array(hdf5_dataset)
-    napari_layer = NapariImageLayer(name=name, data=napari_layer_data)
     layer = HDF5Layer(
         name=name,
-        loaded_napari_layer=napari_layer,
+        loaded_napari_layer=NapariImageLayer(
+            name=name, data=da.from_array(hdf5_dataset)
+        ),
         hdf5_file=hdf5_file,
         hdf5_path=hdf5_path,
     )

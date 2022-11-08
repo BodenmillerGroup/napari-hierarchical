@@ -59,11 +59,9 @@ def _create_layer(
     zarr_path = "/".join(zarr_names)
     if name is None:
         name = f"{Path(zarr_file).name} [/{zarr_path}]"
-    napari_layer_data = da.from_zarr(zarr_array)
-    napari_layer = NapariImageLayer(name=name, data=napari_layer_data)
     layer = ZarrLayer(
         name=name,
-        loaded_napari_layer=napari_layer,
+        loaded_napari_layer=NapariImageLayer(name=name, data=da.from_zarr(zarr_array)),
         zarr_file=zarr_file,
         zarr_path=zarr_path,
     )
