@@ -46,8 +46,8 @@ class QDatasetsWidget(QWidget):
         self._dataset_tool_bar.addWidget(self._new_dataset_push_button)
         self._dataset_tool_bar.addWidget(self._delete_dataset_push_button)
         self._dataset_tree_view = QDatasetTreeView(controller)
-        self._connect_events()
         self._init_layout()
+        self._connect_events()
 
     def __del__(self) -> None:
         self._disconnect_events()
@@ -76,6 +76,8 @@ class QDatasetsWidget(QWidget):
             datasets = controller.datasets
         dataset = Dataset(name="New Dataset")
         datasets.append(dataset)
+        controller.selected_datasets.clear()
+        controller.selected_datasets.append(dataset)
 
     def _on_delete_dataset_push_button_clicked(self, checked: bool = False) -> None:
         def get_level(dataset: Dataset, current_level: int = 0) -> int:
