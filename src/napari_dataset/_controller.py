@@ -188,7 +188,7 @@ class DatasetController:
         if event.type in ("inserted", "removed", "changed"):
             self._update_current_layers()
 
-    # TODO update current layers for nested layer/dataset changes!
+    # TODO update current layers for nested layer/dataset changes
 
     def _update_current_layers(self) -> None:
         if len(self._selected_datasets) > 0:
