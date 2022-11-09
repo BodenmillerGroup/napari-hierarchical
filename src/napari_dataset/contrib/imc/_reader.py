@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Union
 
+import numpy as np
 from napari.layers import Image as NapariImageLayer
 
 from napari_dataset.model import Dataset, Layer
@@ -69,8 +70,22 @@ def load_imc_panorama_layer(layer: Layer) -> None:
         panorama = next(
             panorama for panorama in slide.panoramas if panorama.id == layer.panorama_id
         )
-        data = f.read_panorama(panorama)
-    layer.napari_layer = NapariImageLayer(name=layer.name, data=data)  # TODO transform
+        data = f.read_panorama(panorama)[::-1, :]
+        scale = (
+            panorama.height_um / data.shape[0],
+            panorama.width_um / data.shape[1],
+        )
+        translate = (
+            panorama.points_um[0][1] - panorama.height_um,
+            panorama.points_um[0][0],
+        )
+        rotate = -np.arctan2(
+            panorama.points_um[1][1] - panorama.points_um[0][1],
+            panorama.points_um[1][0] - panorama.points_um[0][0],
+        )
+    layer.napari_layer = NapariImageLayer(
+        name=layer.name, data=data, scale=scale, translate=translate, rotate=rotate
+    )
 
 
 def load_imc_acquisition_layer(layer: Layer) -> None:
@@ -84,5 +99,19 @@ def load_imc_acquisition_layer(layer: Layer) -> None:
             for acquisition in slide.acquisitions
             if acquisition.id == layer.acquisition_id
         )
-        data = f.read_acquisition(acquisition)[layer.channel_index]
-    layer.napari_layer = NapariImageLayer(name=layer.name, data=data)  # TODO transform
+        data = f.read_acquisition(acquisition)[layer.channel_index, ::-1, :]
+        scale = (
+            acquisition.height_um / data.shape[0],
+            acquisition.width_um / data.shape[1],
+        )
+        translate = (
+            acquisition.roi_points_um[0][1] - acquisition.height_um,
+            acquisition.roi_points_um[0][0],
+        )
+        rotate = -np.arctan2(
+            acquisition.roi_points_um[1][1] - acquisition.roi_points_um[0][1],
+            acquisition.roi_points_um[1][0] - acquisition.roi_points_um[0][0],
+        )
+    layer.napari_layer = NapariImageLayer(
+        name=layer.name, data=data, scale=scale, translate=translate, rotate=rotate
+    )
