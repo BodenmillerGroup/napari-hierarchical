@@ -213,14 +213,15 @@ class QDatasetTreeModel(QAbstractItemModel):
         data = super().mimeData(indexes)
         indices_stacks = []
         for index in indexes:
-            indices_stack = []
-            dataset = index.internalPointer()
-            assert isinstance(dataset, Dataset)
-            while dataset.parent is not None:
-                indices_stack.append(dataset.parent.children.index(dataset))
-                dataset = dataset.parent
-            indices_stack.append(self._controller.datasets.index(dataset))
-            indices_stacks.append(indices_stack)
+            if index.column() == 0:
+                indices_stack = []
+                dataset = index.internalPointer()
+                assert isinstance(dataset, Dataset)
+                while dataset.parent is not None:
+                    indices_stack.append(dataset.parent.children.index(dataset))
+                    dataset = dataset.parent
+                indices_stack.append(self._controller.datasets.index(dataset))
+                indices_stacks.append(indices_stack)
         data.setData("x-napari-dataset", pickle.dumps(indices_stacks))
         return data
 
