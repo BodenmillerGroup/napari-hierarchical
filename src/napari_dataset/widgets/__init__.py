@@ -3,7 +3,7 @@ from ._dataset_tree_view import QDatasetTreeView
 from ._datasets_widget import QDatasetsWidget
 from ._layer_group_table_model import QLayerGroupTableModel
 from ._layer_group_table_view import QLayerGroupTableView
-from ._layer_group_table_views_tab_widget import QLayerGroupTableViewsTabWidget
+from ._layer_groups_widget import QLayerGroupsWidget
 from ._layers_widget import QLayersWidget
 
 __all__ = [
@@ -12,6 +12,6 @@ __all__ = [
     "QDatasetsWidget",
     "QLayerGroupTableModel",
     "QLayerGroupTableView",
-    "QLayerGroupTableViewsTabWidget",
+    "QLayerGroupsWidget",
     "QLayersWidget",
 ]

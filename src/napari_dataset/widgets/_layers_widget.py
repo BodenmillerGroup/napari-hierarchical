@@ -14,7 +14,7 @@ from qtpy.QtWidgets import (
 
 from .._controller import controller
 from ..model import Layer
-from ._layer_group_table_views_tab_widget import QLayerGroupTableViewsTabWidget
+from ._layer_groups_widget import QLayerGroupsWidget
 
 
 class QLayersWidget(QWidget):
@@ -64,16 +64,14 @@ class QLayersWidget(QWidget):
         self._layer_tool_bar.addWidget(self._new_shapes_layer_push_button)
         self._layer_tool_bar.addWidget(self._new_labels_layer_push_button)
         self._layer_tool_bar.addWidget(self._delete_layer_push_button)
-        self._layer_group_table_views_tab_widget = QLayerGroupTableViewsTabWidget(
-            controller
-        )
+        self._layer_groups_widget = QLayerGroupsWidget(controller)
         self._init_layout()
         self._connect_events()
 
     def _init_layout(self) -> None:
         layout = QVBoxLayout()
         layout.addWidget(self._layer_tool_bar)
-        layout.addWidget(self._layer_group_table_views_tab_widget)
+        layout.addWidget(self._layer_groups_widget)
         self.setLayout(layout)
 
     def _connect_events(self) -> None:

@@ -8,7 +8,7 @@ from ..model import Layer
 from ._layer_group_table_view import QLayerGroupTableView
 
 
-class QLayerGroupTableViewsTabWidget(QTabWidget):
+class QLayerGroupsWidget(QTabWidget):
     def __init__(
         self, controller: DatasetController, parent: Optional[QWidget] = None
     ) -> None:
