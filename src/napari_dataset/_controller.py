@@ -188,6 +188,8 @@ class DatasetController:
         if event.type in ("inserted", "removed", "changed"):
             self._update_current_layers()
 
+    # TODO update current layers for nested layer/dataset changes!
+
     def _update_current_layers(self) -> None:
         if len(self._selected_datasets) > 0:
             datasets = self._selected_datasets
@@ -202,6 +204,7 @@ class DatasetController:
             self._current_layers.remove(layer)
         for layer in new_current_layers.difference(old_current_layers):
             self._current_layers.append(layer)
+        self._current_layers.selection.clear()
 
     def _on_current_layers_selection_changed_event(self, event: Event) -> None:
         if self._viewer is not None and not self._updating_current_layers_selection:
