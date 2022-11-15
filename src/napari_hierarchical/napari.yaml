@@ -1,0 +1,41 @@
+name: napari-hierarchical
+display_name: napari-hierarchical
+contributions:
+  commands:
+    - id: napari-hierarchical.get_reader
+      python_name: napari_hierarchical:napari_get_reader
+      title: Open data with napari-hierarchical
+    - id: napari-hierarchical.make_groups_widget
+      python_name: napari_hierarchical.widgets:QGroupsWidget
+      title: Make napari-hierarchical groups widget
+    - id: napari-hierarchical.make_arrays_widget
+      python_name: napari_hierarchical.widgets:QArraysWidget
+      title: Make napari-hierarchical arrays widget
+    - id: napari-hierarchical.sample_data.imc_mock
+      python_name: napari_hierarchical.sample_data.imc_mock:make_sample_data
+      title: Make IMC mock sample data
+    - id: napari-hierarchical.sample_data.idr0052A
+      python_name: napari_hierarchical.sample_data.idr0052A:make_sample_data
+      title: Make idr0052A sample data
+    - id: napari-hierarchical.sample_data.pollen
+      python_name: napari_hierarchical.sample_data.pollen:make_sample_data
+      title: Make pollen sample data
+  readers:
+    - command: napari-hierarchical.get_reader
+      accepts_directories: false
+      filename_patterns: ['*']
+  widgets:
+    - command: napari-hierarchical.make_groups_widget
+      display_name: Groups
+    - command: napari-hierarchical.make_arrays_widget
+      display_name: Arrays
+  sample_data:
+    - key: imc_mock
+      display_name: IMC mock data (Bodenmiller group, University of Zurich)
+      command: napari-hierarchical.sample_data.imc_mock
+    - key: idr0052A
+      display_name: 3D confocal time-lapse imaging of human condensins (Walther et al., 2018)
+      command: napari-hierarchical.sample_data.idr0052A
+    - key: pollen
+      display_name: 3D confocal imaging of a pollen grain (Computer Vision Group, University of Freiburg)
+      command: napari-hierarchical.sample_data.pollen
