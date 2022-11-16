@@ -169,12 +169,14 @@ class HierarchicalController:
         self._process_groups_event(event, connect=True)
 
     def _on_group_nested_event(self, event: Event) -> None:
-        assert isinstance(event.source_list_event, Event)
-        groups = event.source_list_event.source
-        assert isinstance(groups, ParentAware)
-        assert isinstance(groups.parent, Group)
-        if groups == groups.parent.children:
-            self._process_groups_event(event.source_list_event)
+        source_list_event = event.source_list_event
+        assert isinstance(source_list_event, Event)
+        group_children = source_list_event.source
+        assert isinstance(group_children, ParentAware)
+        group = group_children.parent
+        assert isinstance(group, Group)
+        if group_children == group.children:
+            self._process_groups_event(source_list_event)
 
     def _process_groups_event(self, event: Event, connect: bool = False) -> None:
         if not isinstance(event.sources[0], EventedList):
@@ -186,25 +188,29 @@ class HierarchicalController:
                 self._update_current_arrays()
         if connect:
             if event.type == "inserted":
-                assert isinstance(event.value, Group)
-                event.value.nested_list_event.connect(self._on_group_nested_event)
+                group = event.value
+                assert isinstance(group, Group)
+                group.nested_list_event.connect(self._on_group_nested_event)
             elif event.type == "removed":
-                assert isinstance(event.value, Group)
-                event.value.nested_list_event.disconnect(self._on_group_nested_event)
+                group = event.value
+                assert isinstance(group, Group)
+                group.nested_list_event.disconnect(self._on_group_nested_event)
             elif event.type == "changed" and isinstance(event.index, int):
-                assert isinstance(event.old_value, Group)
-                event.old_value.nested_list_event.disconnect(
-                    self._on_group_nested_event
-                )
-                assert isinstance(event.value, Group)
-                event.value.nested_list_event.connect(self._on_group_nested_event)
+                old_group = event.old_value
+                assert isinstance(old_group, Group)
+                old_group.nested_list_event.disconnect(self._on_group_nested_event)
+                group = event.value
+                assert isinstance(group, Group)
+                group.nested_list_event.connect(self._on_group_nested_event)
             elif event.type == "changed":
-                assert isinstance(event.old_value, List)
-                for old_group in event.old_value:
+                old_groups = event.old_value
+                assert isinstance(old_groups, List)
+                for old_group in old_groups:
                     assert isinstance(old_group, Group)
                     old_group.nested_list_event.disconnect(self._on_group_nested_event)
-                assert isinstance(event.value, List)
-                for group in event.value:
+                groups = event.value
+                assert isinstance(groups, List)
+                for group in groups:
                     assert isinstance(group, Group)
                     group.nested_list_event.connect(self._on_group_nested_event)
 
@@ -230,37 +236,40 @@ class HierarchicalController:
         if not isinstance(event.sources[0], EventedList):
             return
         if event.type == "inserted":
-            pass  # event.value ignored intentionally
+            pass  # ignored intentionally
         elif event.type == "removed":
-            assert isinstance(event.value, Layer)
+            layer = event.value
+            assert isinstance(layer, Layer)
             array = next(
                 (
                     array
                     for group in self._groups
                     for array in group.iter_arrays(recursive=True)
-                    if array.layer == event.value
+                    if array.layer == layer
                 ),
                 None,
             )
             if array is not None:
                 array.layer = None
         elif event.type == "changed" and isinstance(event.index, int):
-            assert isinstance(event.old_value, Layer)
+            old_layer = event.old_value
+            assert isinstance(old_layer, Layer)
             old_array = next(
                 (
                     array
                     for group in self._groups
                     for array in group.iter_arrays(recursive=True)
-                    if array.layer == event.old_value
+                    if array.layer == old_layer
                 ),
                 None,
             )
             if old_array is not None:
                 old_array.layer = None
-            # event.value ignored intentionally
+            # ignored intentionally
         elif event.type == "changed":
-            assert isinstance(event.old_value, List)
-            for old_layer in event.old_value:
+            old_layers = event.old_value
+            assert isinstance(old_layers, List)
+            for old_layer in old_layers:
                 assert isinstance(old_layer, Layer)
                 old_array = next(
                     (
@@ -273,7 +282,7 @@ class HierarchicalController:
                 )
                 if old_array is not None:
                     old_array.layer = None
-            # event.value ignored intentionally
+            # ignored intentionally
 
     def _on_layers_selection_changed_event(self, event: Event) -> None:
         if self._viewer is not None and not self._updating_layers_selection:
@@ -297,11 +306,11 @@ class HierarchicalController:
         new_current_arrays: Set[Array] = set()
         for group in selected_groups:
             new_current_arrays.update(group.iter_arrays(recursive=True))
+        self._current_arrays.selection.clear()
         for array in old_current_arrays.difference(new_current_arrays):
             self._current_arrays.remove(array)
         for array in new_current_arrays.difference(old_current_arrays):
             self._current_arrays.append(array)
-        self._current_arrays.selection.clear()
 
     @property
     def pm(self) -> PluginManager:

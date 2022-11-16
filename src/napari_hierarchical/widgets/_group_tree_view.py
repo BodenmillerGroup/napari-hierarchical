@@ -42,26 +42,6 @@ class QGroupTreeView(QTreeView):
             self._on_selected_groups_event
         )
 
-    def _on_selected_groups_event(self, event: Event) -> None:
-        if not isinstance(event.sources[0], EventedList):
-            return
-        if (
-            event.type in ("inserted", "removed", "changed")
-            and not self._updating_selected_groups
-        ):
-            new_item_selection = QItemSelection()
-            for group in self._controller.selected_groups:
-                assert isinstance(group, Group)
-                index = self._model.create_group_index(group)
-                new_item_selection.append(QItemSelectionRange(index))
-            self._updating_selection = True
-            try:
-                self.selectionModel().select(
-                    new_item_selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
-                )
-            finally:
-                self._updating_selection = False
-
     def _on_selection_changed(
         self, selected: QItemSelection, deselected: QItemSelection
     ) -> None:
@@ -80,5 +60,24 @@ class QGroupTreeView(QTreeView):
                     self._controller.selected_groups.append(group)
             finally:
                 self._updating_selected_groups = False
+
+    def _on_selected_groups_event(self, event: Event) -> None:
+        if not isinstance(event.sources[0], EventedList):
+            return
+        if (
+            event.type in ("inserted", "removed", "changed")
+            and not self._updating_selected_groups
+        ):
+            new_item_selection = QItemSelection()
+            for group in self._controller.selected_groups:
+                index = self._model.create_group_index(group)
+                new_item_selection.append(QItemSelectionRange(index))
+            self._updating_selection = True
+            try:
+                self.selectionModel().select(
+                    new_item_selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
+                )
+            finally:
+                self._updating_selection = False
 
     # TODO context menu (write/save group)

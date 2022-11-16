@@ -64,9 +64,9 @@ def _create_array(
         zarr_path=zarr_path,
     )
     if len(zarr_names) > 0:
-        array.array_grouping_groups["Path"] = (
+        array.flat_grouping_groups["Path"] = (
             "/*" * (len(zarr_names) - 1) + "/" + zarr_names[-1]
         )
     else:
-        array.array_grouping_groups["Path"] = "/"
+        array.flat_grouping_groups["Path"] = "/"
     return array

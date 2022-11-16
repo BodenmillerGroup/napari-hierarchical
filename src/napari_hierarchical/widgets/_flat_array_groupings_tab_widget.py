@@ -5,18 +5,18 @@ from qtpy.QtWidgets import QTabWidget, QWidget
 
 from .._controller import HierarchicalController
 from ..model import Array
-from ._array_group_table_view import QArrayGroupTableView
+from ._flat_array_grouping_tree_view import QFlatArrayGroupingTreeView
 
 
-class QArrayGroupsTabWidget(QTabWidget):
+class QFlatArrayGroupingsTabWidget(QTabWidget):
     def __init__(
         self, controller: HierarchicalController, parent: Optional[QWidget] = None
     ) -> None:
         super().__init__(parent)
         self._controller = controller
-        self._array_group_table_views: Dict[str, QArrayGroupTableView] = {}
+        self._flat_array_grouping_tree_views: Dict[str, QFlatArrayGroupingTreeView] = {}
         assert controller.viewer is not None
-        self.addTab(QArrayGroupTableView(controller), "Array")
+        self.addTab(QFlatArrayGroupingTreeView(controller), "Array")
         for array in controller.current_arrays:
             self._register_array(array)
         self._connect_events()
@@ -41,30 +41,40 @@ class QArrayGroupsTabWidget(QTabWidget):
         )
 
     def _on_current_arrays_inserted_event(self, event: Event) -> None:
-        assert isinstance(event.value, Array)
-        self._register_array(event.value)
+        array = event.value
+        assert isinstance(array, Array)
+        self._register_array(array)
 
     def _on_current_arrays_changed_event(self, event: Event) -> None:
-        if isinstance(event.value, Array):
-            self._register_array(event.value)
+        array_or_arrays = event.value
+        if isinstance(array_or_arrays, Array):
+            array = array_or_arrays
+            self._register_array(array)
         else:
-            assert isinstance(event.value, List)
-            for array in event.value:
+            arrays = array_or_arrays
+            assert isinstance(arrays, List)
+            for array in arrays:
                 assert isinstance(array, Array)
                 self._register_array(array)
 
     def _register_array(self, array: Array) -> None:
-        for array_grouping in array.array_grouping_groups.keys():
-            if array_grouping not in self._array_group_table_views:
-                array_group_table_view = QArrayGroupTableView(
+        for flat_grouping in array.flat_grouping_groups.keys():
+            if flat_grouping not in self._flat_array_grouping_tree_views:
+                flat_array_grouping_tree_view = QFlatArrayGroupingTreeView(
                     self._controller,
-                    array_grouping=array_grouping,
-                    close_callback=lambda: self._close_grouping(array_grouping),
+                    flat_grouping=flat_grouping,
+                    close_callback=lambda: self._close_grouping(flat_grouping),
                 )
-                self.addTab(array_group_table_view, array_grouping)
-                self._array_group_table_views[array_grouping] = array_group_table_view
+                self.addTab(flat_array_grouping_tree_view, flat_grouping)
+                self._flat_array_grouping_tree_views[
+                    flat_grouping
+                ] = flat_array_grouping_tree_view
 
-    def _close_grouping(self, array_grouping: str) -> None:
-        array_group_table_view = self._array_group_table_views.pop(array_grouping)
-        array_group_table_view_tab_index = self.indexOf(array_group_table_view)
-        self.removeTab(array_group_table_view_tab_index)
+    def _close_grouping(self, flat_grouping: str) -> None:
+        flat_array_grouping_tree_view = self._flat_array_grouping_tree_views.pop(
+            flat_grouping
+        )
+        flat_array_grouping_tree_view_tab_index = self.indexOf(
+            flat_array_grouping_tree_view
+        )
+        self.removeTab(flat_array_grouping_tree_view_tab_index)

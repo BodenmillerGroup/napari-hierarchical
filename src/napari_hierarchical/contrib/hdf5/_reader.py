@@ -55,9 +55,9 @@ def _create_array(
         name=name, loaded_layer=layer, hdf5_file=hdf5_file, hdf5_path=hdf5_path
     )
     if len(hdf5_names) > 0:
-        array.array_grouping_groups["Path"] = (
+        array.flat_grouping_groups["Path"] = (
             "/*" * (len(hdf5_names) - 1) + "/" + hdf5_names[-1]
         )
     else:
-        array.array_grouping_groups["Path"] = "/"
+        array.flat_grouping_groups["Path"] = "/"
     return array

@@ -52,7 +52,7 @@ def read_imc(path: PathLike) -> Group:
                         acquisition_id=acquisition.id,
                         channel_index=channel_index,
                     )
-                    acquisition_array.array_grouping_groups[
+                    acquisition_array.flat_grouping_groups[
                         "Channel"
                     ] = f"[C{channel_index:02d}] {channel_name} {channel_label}"
                     acquisition_group.arrays.append(acquisition_array)

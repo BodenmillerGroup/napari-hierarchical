@@ -14,7 +14,7 @@ from qtpy.QtWidgets import (
 
 from .._controller import controller
 from ..model import Array
-from ._array_groups_tab_widget import QArrayGroupsTabWidget
+from ._flat_array_groupings_tab_widget import QFlatArrayGroupingsTabWidget
 
 
 # TODO styling (buttons)
@@ -55,7 +55,7 @@ class QArraysWidget(QWidget):
         self._array_tool_bar.addWidget(self._new_shapes_array_push_button)
         self._array_tool_bar.addWidget(self._new_labels_array_push_button)
         self._array_tool_bar.addWidget(self._delete_array_push_button)
-        self._array_groups_tab_widget = QArrayGroupsTabWidget(controller)
+        self._flat_array_groupings_tab_widget = QFlatArrayGroupingsTabWidget(controller)
         self._init_layout()
         self._connect_events()
         self._check_new_array_push_buttons_enabled()
@@ -64,7 +64,7 @@ class QArraysWidget(QWidget):
     def _init_layout(self) -> None:
         layout = QVBoxLayout()
         layout.addWidget(self._array_tool_bar)
-        layout.addWidget(self._array_groups_tab_widget)
+        layout.addWidget(self._flat_array_groupings_tab_widget)
         self.setLayout(layout)
 
     def _connect_events(self) -> None:
@@ -92,8 +92,6 @@ class QArraysWidget(QWidget):
         layer = controller.viewer.add_points()
         array = Array(name=layer.name, layer=layer, loaded_layer=layer)
         group.arrays.append(array)
-        self._array_groups_tab_widget.setCurrentIndex(0)
-        # TODO select added array
 
     def _on_new_shapes_array_push_button_clicked(self, checked: bool = False) -> None:
         assert controller.viewer is not None
@@ -102,8 +100,6 @@ class QArraysWidget(QWidget):
         layer = controller.viewer.add_shapes()
         array = Array(name=layer.name, layer=layer, loaded_layer=layer)
         group.arrays.append(array)
-        self._array_groups_tab_widget.setCurrentIndex(0)
-        # TODO select added array
 
     def _on_new_labels_array_push_button_clicked(self, checked: bool = False) -> None:
         assert controller.viewer is not None
@@ -112,8 +108,6 @@ class QArraysWidget(QWidget):
         layer = controller.viewer.add_labels([])
         array = Array(name=layer.name, layer=layer, loaded_layer=layer)
         group.arrays.append(array)
-        self._array_groups_tab_widget.setCurrentIndex(0)
-        # TODO select added array
 
     def _on_delete_array_push_button_clicked(self, checked: bool = False) -> None:
         arrays = list(controller.current_arrays.selection)

@@ -79,50 +79,39 @@ class Group(NestedParentAwareEventedModel["Group"]):
 
     @property
     def loaded(self) -> Optional[bool]:
-        n = 0
-        n_loaded = 0
-        for array in self.iter_arrays(recursive=True):
-            n += 1
-            if array.loaded:
-                n_loaded += 1
+        n_loaded = sum(array.loaded for array in self.iter_arrays(recursive=True))
         if n_loaded == 0:
             return False
-        if n_loaded == n:
+        if n_loaded == sum(1 for _ in self.iter_arrays(recursive=True)):
             return True
         return None
 
     @property
     def visible(self) -> Optional[bool]:
-        n_loaded = 0
-        n_visible = 0
-        for array in self.iter_arrays(recursive=True):
-            if array.loaded:
-                n_loaded += 1
-            if array.visible:
-                n_visible += 1
+        n_visible = sum(array.visible for array in self.iter_arrays(recursive=True))
         if n_visible == 0:
             return False
-        if n_visible == n_loaded:
+        if n_visible == sum(array.loaded for array in self.iter_arrays(recursive=True)):
             return True
         return None
 
 
 class Array(ParentAwareEventedModel[Group]):
     # avoid parameterized generics in type annotations for pydantic
-    class ArrayGroupingGroupsDict(ParentAwareEventedDict["Array", str, str]):
+    class FlatGroupingGroupsDict(ParentAwareEventedDict["Array", str, str]):
         def __init__(self) -> None:
             super().__init__(basetype=str)
 
     name: str
     layer: Optional[Layer] = None
     loaded_layer: Optional[Layer] = Field(default=None, allow_mutation=False)
-    array_grouping_groups: ArrayGroupingGroupsDict = Field(
-        default_factory=ArrayGroupingGroupsDict, allow_mutation=False
+    flat_grouping_groups: FlatGroupingGroupsDict = Field(
+        default_factory=FlatGroupingGroupsDict, allow_mutation=False
     )
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.array_grouping_groups.set_parent(self)
+        self.flat_grouping_groups.set_parent(self)
         self.events.add(loaded=Event, visible=Event)
         self.events.name.connect(self._on_name_event)
         self.events.layer.connect(self._on_layer_event)
@@ -134,7 +123,7 @@ class Array(ParentAwareEventedModel[Group]):
         new_array = Array(
             name=array.name, layer=array.layer, loaded_layer=array.loaded_layer
         )
-        new_array.array_grouping_groups.update(array.array_grouping_groups)
+        new_array.flat_grouping_groups.update(array.groups)
         return new_array
 
     def show(self) -> None:
