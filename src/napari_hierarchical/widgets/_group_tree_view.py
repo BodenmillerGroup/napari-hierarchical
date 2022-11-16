@@ -22,9 +22,15 @@ class QGroupTreeView(QTreeView):
         self.setModel(self._model)
         self.header().hide()
         self.header().setStretchLastSection(False)
-        self.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.header().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.header().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        self.header().setSectionResizeMode(
+            QGroupTreeModel.COLUMNS.NAME, QHeaderView.ResizeMode.Stretch
+        )
+        self.header().setSectionResizeMode(
+            QGroupTreeModel.COLUMNS.LOADED, QHeaderView.ResizeMode.ResizeToContents
+        )
+        self.header().setSectionResizeMode(
+            QGroupTreeModel.COLUMNS.VISIBLE, QHeaderView.ResizeMode.ResizeToContents
+        )
         self.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)
         self.setSelectionBehavior(QTreeView.SelectionBehavior.SelectRows)
         self.setDragEnabled(True)
@@ -71,14 +77,14 @@ class QGroupTreeView(QTreeView):
             event.type in ("inserted", "removed", "changed")
             and not self._updating_selected_groups
         ):
-            new_item_selection = QItemSelection()
+            new_selection = QItemSelection()
             for group in self._controller.selected_groups:
                 index = self._model.create_group_index(group)
-                new_item_selection.append(QItemSelectionRange(index))
+                new_selection.append(QItemSelectionRange(index))
             self._updating_selection = True
             try:
                 self.selectionModel().select(
-                    new_item_selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
+                    new_selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
                 )
             finally:
                 self._updating_selection = False
