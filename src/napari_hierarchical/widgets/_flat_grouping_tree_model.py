@@ -559,6 +559,13 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             self.beginInsertRows(flat_group_index, array_row, array_row)
             self._flat_group_arrays[flat_group].insert(array_row, array)
             self.endInsertRows()
+            first_flat_group_index = self.create_flat_group_index(
+                flat_group, column=self.COLUMNS.LOADED
+            )
+            last_flat_group_index = self.create_flat_group_index(
+                flat_group, column=self.COLUMNS.VISIBLE
+            )
+            self.dataChanged.emit(first_flat_group_index, last_flat_group_index)
 
     def _remove_array_from_flat_group(self, array: Array, flat_group: str) -> None:
         if any(a for a in self._flat_group_arrays[flat_group] if a != array):
@@ -567,6 +574,13 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             self.beginRemoveRows(flat_group_index, array_row, array_row)
             del self._flat_group_arrays[flat_group][array_row]
             self.endRemoveRows()
+            first_flat_group_index = self.create_flat_group_index(
+                flat_group, column=self.COLUMNS.LOADED
+            )
+            last_flat_group_index = self.create_flat_group_index(
+                flat_group, column=self.COLUMNS.VISIBLE
+            )
+            self.dataChanged.emit(first_flat_group_index, last_flat_group_index)
         else:
             flat_group_row = self._flat_groups.index(flat_group)
             self.beginRemoveRows(QModelIndex(), flat_group_row, flat_group_row)
