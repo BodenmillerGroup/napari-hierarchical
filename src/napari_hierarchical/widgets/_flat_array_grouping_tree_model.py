@@ -43,6 +43,36 @@ class QFlatArrayGroupingTreeModel(QAbstractItemModel):
     def __del__(self) -> None:
         self._disconnect_events()
 
+    def _connect_events(self) -> None:
+        self._controller.current_arrays.events.connect(self._on_current_arrays_event)
+        for array in self._controller.current_arrays:
+            self._connect_array_events(array)
+
+    def _disconnect_events(self) -> None:
+        for array in self._controller.current_arrays:
+            self._disconnect_array_events(array)
+        self._controller.current_arrays.events.disconnect(self._on_current_arrays_event)
+
+    def _connect_array_events(self, array: Array) -> None:
+        if self._flat_grouping is not None:
+            array.flat_grouping_groups.events.connect(
+                self._on_flat_grouping_groups_event
+            )
+        else:
+            array.events.name.connect(self._on_array_name_event)
+        array.events.loaded.connect(self._on_array_loaded_event)
+        array.events.visible.connect(self._on_array_visible_event)
+
+    def _disconnect_array_events(self, array: Array) -> None:
+        if self._flat_grouping is not None:
+            array.flat_grouping_groups.events.disconnect(
+                self._on_flat_grouping_groups_event
+            )
+        else:
+            array.events.name.disconnect(self._on_array_name_event)
+        array.events.loaded.disconnect(self._on_array_loaded_event)
+        array.events.visible.disconnect(self._on_array_visible_event)
+
     def index(
         self, row: int, column: int, parent: QModelIndex = QModelIndex()
     ) -> QModelIndex:
@@ -380,36 +410,6 @@ class QFlatArrayGroupingTreeModel(QAbstractItemModel):
         flat_group = self._get_flat_group(array)
         return self.create_flat_group_index(flat_group, column=column)
 
-    def _connect_events(self) -> None:
-        self._controller.current_arrays.events.connect(self._on_current_arrays_event)
-        for array in self._controller.current_arrays:
-            self._connect_array_events(array)
-
-    def _disconnect_events(self) -> None:
-        for array in self._controller.current_arrays:
-            self._disconnect_array_events(array)
-        self._controller.current_arrays.events.disconnect(self._on_current_arrays_event)
-
-    def _connect_array_events(self, array: Array) -> None:
-        if self._flat_grouping is not None:
-            array.flat_grouping_groups.events.connect(
-                self._on_array_flat_grouping_groups_event
-            )
-        else:
-            array.events.name.connect(self._on_array_name_event)
-        array.events.loaded.connect(self._on_array_loaded_event)
-        array.events.visible.connect(self._on_array_visible_event)
-
-    def _disconnect_array_events(self, array: Array) -> None:
-        if self._flat_grouping is not None:
-            array.flat_grouping_groups.events.disconnect(
-                self._on_array_flat_grouping_groups_event
-            )
-        else:
-            array.events.name.disconnect(self._on_array_name_event)
-        array.events.loaded.disconnect(self._on_array_loaded_event)
-        array.events.visible.disconnect(self._on_array_visible_event)
-
     def _on_current_arrays_event(self, event: Event) -> None:
         if not isinstance(event.sources[0], EventedList):
             return
@@ -426,6 +426,7 @@ class QFlatArrayGroupingTreeModel(QAbstractItemModel):
         elif event.type == "removed":
             array = event.value
             assert isinstance(array, Array)
+            self._disconnect_array_events(array)
             if (
                 self._flat_grouping is None
                 or self._flat_grouping in array.flat_grouping_groups
@@ -433,11 +434,11 @@ class QFlatArrayGroupingTreeModel(QAbstractItemModel):
                 flat_group = self._get_flat_group(array)
                 self._remove_array_from_flat_group(array, flat_group)
                 self._close_if_empty()
-            self._disconnect_array_events(array)
         elif event.type == "changed" and isinstance(event.index, int):
             close_if_empty = False
             old_array = event.old_value
             assert isinstance(old_array, Array)
+            self._disconnect_array_events(old_array)
             if (
                 self._flat_grouping is None
                 or self._flat_grouping in old_array.flat_grouping_groups
@@ -445,7 +446,6 @@ class QFlatArrayGroupingTreeModel(QAbstractItemModel):
                 old_flat_group = self._get_flat_group(old_array)
                 self._remove_array_from_flat_group(old_array, old_flat_group)
                 close_if_empty = True
-            self._disconnect_array_events(old_array)
             array = event.value
             assert isinstance(array, Array)
             if (
@@ -464,6 +464,7 @@ class QFlatArrayGroupingTreeModel(QAbstractItemModel):
             assert isinstance(old_arrays, List)
             for old_array in old_arrays:
                 assert isinstance(old_array, Array)
+                self._disconnect_array_events(old_array)
                 if (
                     self._flat_grouping is None
                     or self._flat_grouping in old_array.flat_grouping_groups
@@ -471,7 +472,6 @@ class QFlatArrayGroupingTreeModel(QAbstractItemModel):
                     old_flat_group = self._get_flat_group(old_array)
                     self._remove_array_from_flat_group(old_array, old_flat_group)
                     close_if_empty = True
-                self._disconnect_array_events(old_array)
             arrays = event.value
             assert isinstance(arrays, List)
             for array in arrays:
@@ -487,7 +487,7 @@ class QFlatArrayGroupingTreeModel(QAbstractItemModel):
             if close_if_empty:
                 self._close_if_empty()
 
-    def _on_array_flat_grouping_groups_event(self, event: Event) -> None:
+    def _on_flat_grouping_groups_event(self, event: Event) -> None:
         assert self._flat_grouping is not None
         if not isinstance(event.sources[0], EventedDict):
             return

@@ -26,6 +26,24 @@ class QGroupTreeModel(QAbstractItemModel):
     def __del__(self) -> None:
         self._disconnect_events()
 
+    def _connect_events(self) -> None:
+        self._controller.groups.events.connect(self._on_groups_event)
+        for group in self._controller.groups:
+            self._connect_group_events(group)
+
+    def _disconnect_events(self) -> None:
+        for group in self._controller.groups:
+            self._disconnect_group_events(group)
+        self._controller.groups.events.disconnect(self._on_groups_event)
+
+    def _connect_group_events(self, group: Group) -> None:
+        group.nested_event.connect(self._on_group_nested_event)
+        group.nested_list_event.connect(self._on_group_nested_list_event)
+
+    def _disconnect_group_events(self, group: Group) -> None:
+        group.nested_event.disconnect(self._on_group_nested_event)
+        group.nested_list_event.disconnect(self._on_group_nested_list_event)
+
     def index(
         self, row: int, column: int, parent: QModelIndex = QModelIndex()
     ) -> QModelIndex:
@@ -269,24 +287,6 @@ class QGroupTreeModel(QAbstractItemModel):
             parent_groups = self._controller.groups
         row = parent_groups.index(group)
         return self.createIndex(row, column, object=group)
-
-    def _connect_events(self) -> None:
-        self._controller.groups.events.connect(self._on_groups_event)
-        for group in self._controller.groups:
-            self._connect_group_events(group)
-
-    def _disconnect_events(self) -> None:
-        for group in self._controller.groups:
-            self._disconnect_group_events(group)
-        self._controller.groups.events.disconnect(self._on_groups_event)
-
-    def _connect_group_events(self, group: Group) -> None:
-        group.nested_event.connect(self._on_group_nested_event)
-        group.nested_list_event.connect(self._on_group_nested_list_event)
-
-    def _disconnect_group_events(self, group: Group) -> None:
-        group.nested_event.disconnect(self._on_group_nested_event)
-        group.nested_list_event.disconnect(self._on_group_nested_list_event)
 
     def _on_groups_event(self, event: Event) -> None:
         self._process_groups_event(event, connect=True)

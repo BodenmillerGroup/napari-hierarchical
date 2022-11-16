@@ -34,6 +34,9 @@ class QGroupTreeView(QTreeView):
         self.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self._connect_events()
 
+    def __del__(self) -> None:
+        self._disconnect_events()
+
     def _connect_events(self) -> None:
         self._controller.selected_groups.events.connect(self._on_selected_groups_event)
 

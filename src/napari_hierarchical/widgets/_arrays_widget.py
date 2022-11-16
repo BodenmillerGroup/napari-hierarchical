@@ -55,16 +55,19 @@ class QArraysWidget(QWidget):
         self._array_tool_bar.addWidget(self._new_shapes_array_push_button)
         self._array_tool_bar.addWidget(self._new_labels_array_push_button)
         self._array_tool_bar.addWidget(self._delete_array_push_button)
-        self._flat_array_groupings_tab_widget = QFlatArrayGroupingsTabWidget(controller)
+        self._flat_groupings_tab_widget = QFlatArrayGroupingsTabWidget(controller)
         self._init_layout()
         self._connect_events()
         self._check_new_array_push_buttons_enabled()
         self._check_delete_array_push_button_enabled()
 
+    def __del__(self) -> None:
+        self._disconnect_events()
+
     def _init_layout(self) -> None:
         layout = QVBoxLayout()
         layout.addWidget(self._array_tool_bar)
-        layout.addWidget(self._flat_array_groupings_tab_widget)
+        layout.addWidget(self._flat_groupings_tab_widget)
         self.setLayout(layout)
 
     def _connect_events(self) -> None:

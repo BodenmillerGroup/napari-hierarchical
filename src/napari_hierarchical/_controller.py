@@ -168,7 +168,7 @@ class HierarchicalController:
     def _on_groups_event(self, event: Event) -> None:
         self._process_groups_event(event, connect=True)
 
-    def _on_group_nested_event(self, event: Event) -> None:
+    def _on_group_nested_list_event(self, event: Event) -> None:
         source_list_event = event.source_list_event
         assert isinstance(source_list_event, Event)
         group_children = source_list_event.source
@@ -181,38 +181,56 @@ class HierarchicalController:
     def _process_groups_event(self, event: Event, connect: bool = False) -> None:
         if not isinstance(event.sources[0], EventedList):
             return
-        if event.type in ("inserted", "removed", "changed"):
+        if event.type == "inserted":
             if len(self._selected_groups) > 0:
                 self._selected_groups.clear()
             else:
                 self._update_current_arrays()
-        if connect:
-            if event.type == "inserted":
+            if connect:
                 group = event.value
                 assert isinstance(group, Group)
-                group.nested_list_event.connect(self._on_group_nested_event)
-            elif event.type == "removed":
+                group.nested_list_event.connect(self._on_group_nested_list_event)
+        elif event.type == "removed":
+            if connect:
                 group = event.value
                 assert isinstance(group, Group)
-                group.nested_list_event.disconnect(self._on_group_nested_event)
-            elif event.type == "changed" and isinstance(event.index, int):
+                group.nested_list_event.disconnect(self._on_group_nested_list_event)
+            if len(self._selected_groups) > 0:
+                self._selected_groups.clear()
+            else:
+                self._update_current_arrays()
+        elif event.type == "changed" and isinstance(event.index, int):
+            if connect:
                 old_group = event.old_value
                 assert isinstance(old_group, Group)
-                old_group.nested_list_event.disconnect(self._on_group_nested_event)
+                old_group.nested_list_event.disconnect(self._on_group_nested_list_event)
+            if len(self._selected_groups) > 0:
+                self._selected_groups.clear()
+            else:
+                self._update_current_arrays()
+            if connect:
                 group = event.value
                 assert isinstance(group, Group)
-                group.nested_list_event.connect(self._on_group_nested_event)
-            elif event.type == "changed":
+                group.nested_list_event.connect(self._on_group_nested_list_event)
+        elif event.type == "changed":
+            if connect:
                 old_groups = event.old_value
                 assert isinstance(old_groups, List)
                 for old_group in old_groups:
                     assert isinstance(old_group, Group)
-                    old_group.nested_list_event.disconnect(self._on_group_nested_event)
+                    old_group.nested_list_event.disconnect(
+                        self._on_group_nested_list_event
+                    )
+            if len(self._selected_groups) > 0:
+                self._selected_groups.clear()
+            else:
+                self._update_current_arrays()
+            if connect:
                 groups = event.value
                 assert isinstance(groups, List)
                 for group in groups:
                     assert isinstance(group, Group)
-                    group.nested_list_event.connect(self._on_group_nested_event)
+                    group.nested_list_event.connect(self._on_group_nested_list_event)
 
     def _on_selected_groups_event(self, event: Event) -> None:
         if not isinstance(event.sources[0], EventedList):
@@ -286,7 +304,7 @@ class HierarchicalController:
 
     def _on_layers_selection_changed_event(self, event: Event) -> None:
         if self._viewer is not None and not self._updating_layers_selection:
-            self._updating_current_layers_selection = True
+            self._updating_current_arrays_selection = True
             try:
                 self._current_arrays.selection = {
                     array
@@ -295,7 +313,7 @@ class HierarchicalController:
                     if array.layer == layer
                 }
             finally:
-                self._updating_current_layers_selection = False
+                self._updating_current_arrays_selection = False
 
     def _update_current_arrays(self) -> None:
         if len(self._selected_groups) > 0:

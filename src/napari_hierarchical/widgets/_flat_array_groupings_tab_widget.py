@@ -14,7 +14,7 @@ class QFlatArrayGroupingsTabWidget(QTabWidget):
     ) -> None:
         super().__init__(parent)
         self._controller = controller
-        self._flat_array_grouping_tree_views: Dict[str, QFlatArrayGroupingTreeView] = {}
+        self._flat_grouping_tree_views: Dict[str, QFlatArrayGroupingTreeView] = {}
         assert controller.viewer is not None
         self.addTab(QFlatArrayGroupingTreeView(controller), "Array")
         for array in controller.current_arrays:
@@ -59,22 +59,16 @@ class QFlatArrayGroupingsTabWidget(QTabWidget):
 
     def _register_array(self, array: Array) -> None:
         for flat_grouping in array.flat_grouping_groups.keys():
-            if flat_grouping not in self._flat_array_grouping_tree_views:
-                flat_array_grouping_tree_view = QFlatArrayGroupingTreeView(
+            if flat_grouping not in self._flat_grouping_tree_views:
+                flat_grouping_tree_view = QFlatArrayGroupingTreeView(
                     self._controller,
                     flat_grouping=flat_grouping,
-                    close_callback=lambda: self._close_grouping(flat_grouping),
+                    close_callback=lambda: self._close_flat_grouping_tab(flat_grouping),
                 )
-                self.addTab(flat_array_grouping_tree_view, flat_grouping)
-                self._flat_array_grouping_tree_views[
-                    flat_grouping
-                ] = flat_array_grouping_tree_view
+                self.addTab(flat_grouping_tree_view, flat_grouping)
+                self._flat_grouping_tree_views[flat_grouping] = flat_grouping_tree_view
 
-    def _close_grouping(self, flat_grouping: str) -> None:
-        flat_array_grouping_tree_view = self._flat_array_grouping_tree_views.pop(
-            flat_grouping
-        )
-        flat_array_grouping_tree_view_tab_index = self.indexOf(
-            flat_array_grouping_tree_view
-        )
-        self.removeTab(flat_array_grouping_tree_view_tab_index)
+    def _close_flat_grouping_tab(self, flat_grouping: str) -> None:
+        flat_grouping_tree_view = self._flat_grouping_tree_views.pop(flat_grouping)
+        tab_index = self.indexOf(flat_grouping_tree_view)
+        self.removeTab(tab_index)
