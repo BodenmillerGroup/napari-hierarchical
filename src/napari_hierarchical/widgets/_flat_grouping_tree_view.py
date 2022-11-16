@@ -6,11 +6,11 @@ from qtpy.QtWidgets import QHeaderView, QTreeView, QWidget
 
 from .._controller import HierarchicalController
 from ..model import Array
-from ._flat_array_grouping_tree_model import QFlatArrayGroupingTreeModel
+from ._flat_grouping_tree_model import QFlatGroupingTreeModel
 
 
 # TODO styling (checkboxes)
-class QFlatArrayGroupingTreeView(QTreeView):
+class QFlatGroupingTreeView(QTreeView):
     def __init__(
         self,
         controller: HierarchicalController,
@@ -20,26 +20,26 @@ class QFlatArrayGroupingTreeView(QTreeView):
     ) -> None:
         super().__init__(parent)
         self._controller = controller
-        self._model = QFlatArrayGroupingTreeModel(
+        self._model = QFlatGroupingTreeModel(
             controller, flat_grouping=flat_grouping, close_callback=close_callback
         )
         self._updating_selection = False
         self._updating_current_arrays_selection = False
         self._proxy_model = QSortFilterProxyModel()
         self._proxy_model.setSourceModel(self._model)
-        self._proxy_model.sort(QFlatArrayGroupingTreeModel.COLUMNS.NAME)
+        self._proxy_model.sort(QFlatGroupingTreeModel.COLUMNS.NAME)
         self.setModel(self._proxy_model)
         self.header().hide()
         self.header().setStretchLastSection(False)
         self.header().setSectionResizeMode(
-            QFlatArrayGroupingTreeModel.COLUMNS.NAME, QHeaderView.ResizeMode.Stretch
+            QFlatGroupingTreeModel.COLUMNS.NAME, QHeaderView.ResizeMode.Stretch
         )
         self.header().setSectionResizeMode(
-            QFlatArrayGroupingTreeModel.COLUMNS.LOADED,
+            QFlatGroupingTreeModel.COLUMNS.LOADED,
             QHeaderView.ResizeMode.ResizeToContents,
         )
         self.header().setSectionResizeMode(
-            QFlatArrayGroupingTreeModel.COLUMNS.VISIBLE,
+            QFlatGroupingTreeModel.COLUMNS.VISIBLE,
             QHeaderView.ResizeMode.ResizeToContents,
         )
         self.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)

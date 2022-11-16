@@ -10,7 +10,7 @@ from ..model import Array, Group
 from ..utils.parent_aware import ParentAware
 
 
-class QFlatArrayGroupingTreeModel(QAbstractItemModel):
+class QFlatGroupingTreeModel(QAbstractItemModel):
     class COLUMNS(IntEnum):
         NAME = 0
         LOADED = 1

@@ -14,7 +14,7 @@ from qtpy.QtWidgets import (
 
 from .._controller import controller
 from ..model import Array
-from ._flat_array_groupings_tab_widget import QFlatArrayGroupingsTabWidget
+from ._flat_groupings_tab_widget import QFlatGroupingsTabWidget
 
 
 # TODO styling (buttons)
@@ -55,7 +55,7 @@ class QArraysWidget(QWidget):
         self._array_tool_bar.addWidget(self._new_shapes_array_push_button)
         self._array_tool_bar.addWidget(self._new_labels_array_push_button)
         self._array_tool_bar.addWidget(self._delete_array_push_button)
-        self._flat_groupings_tab_widget = QFlatArrayGroupingsTabWidget(controller)
+        self._flat_groupings_tab_widget = QFlatGroupingsTabWidget(controller)
         self._init_layout()
         self._connect_events()
         self._check_new_array_push_buttons_enabled()

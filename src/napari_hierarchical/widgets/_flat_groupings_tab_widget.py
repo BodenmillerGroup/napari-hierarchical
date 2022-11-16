@@ -5,18 +5,18 @@ from qtpy.QtWidgets import QTabWidget, QWidget
 
 from .._controller import HierarchicalController
 from ..model import Array
-from ._flat_array_grouping_tree_view import QFlatArrayGroupingTreeView
+from ._flat_grouping_tree_view import QFlatGroupingTreeView
 
 
-class QFlatArrayGroupingsTabWidget(QTabWidget):
+class QFlatGroupingsTabWidget(QTabWidget):
     def __init__(
         self, controller: HierarchicalController, parent: Optional[QWidget] = None
     ) -> None:
         super().__init__(parent)
         self._controller = controller
-        self._flat_grouping_tree_views: Dict[str, QFlatArrayGroupingTreeView] = {}
+        self._flat_grouping_tree_views: Dict[str, QFlatGroupingTreeView] = {}
         assert controller.viewer is not None
-        self.addTab(QFlatArrayGroupingTreeView(controller), "Array")
+        self.addTab(QFlatGroupingTreeView(controller), "Array")
         for array in controller.current_arrays:
             self._register_array(array)
         self._connect_events()
@@ -60,7 +60,7 @@ class QFlatArrayGroupingsTabWidget(QTabWidget):
     def _register_array(self, array: Array) -> None:
         for flat_grouping in array.flat_grouping_groups.keys():
             if flat_grouping not in self._flat_grouping_tree_views:
-                flat_grouping_tree_view = QFlatArrayGroupingTreeView(
+                flat_grouping_tree_view = QFlatGroupingTreeView(
                     self._controller,
                     flat_grouping=flat_grouping,
                     close_callback=lambda: self._close_flat_grouping_tab(flat_grouping),
