@@ -75,6 +75,7 @@ class QGroupTreeView(QTreeView):
         if (
             event.type in ("inserted", "removed", "changed")
             and not self._updating_selected_groups
+            and not self._model.dropping
         ):
             new_selection = QItemSelection()
             for group in self._controller.selected_groups:

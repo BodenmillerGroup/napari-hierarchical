@@ -21,6 +21,7 @@ class QGroupTreeModel(QAbstractItemModel):
     ) -> None:
         super().__init__(parent)
         self._controller = controller
+        self._dropping = False
         self._connect_events()
 
     def __del__(self) -> None:
@@ -242,21 +243,25 @@ class QGroupTreeModel(QAbstractItemModel):
                 data.data("x-napari-hierarchical-group").data()
             )
             assert isinstance(indices_stacks, List) and len(indices_stacks) > 0
-            n = 0
-            while len(indices_stacks) > 0:
-                indices_stack = indices_stacks.pop(0)
-                assert isinstance(indices_stack, List) and len(indices_stack) > 0
-                source_groups = self._controller.groups
-                source_row = indices_stack.pop()
-                assert isinstance(source_row, int)
-                while len(indices_stack) > 0:
-                    source_groups = source_groups[source_row].children
+            self._dropping = True
+            try:
+                n = 0
+                while len(indices_stacks) > 0:
+                    indices_stack = indices_stacks.pop(0)
+                    assert isinstance(indices_stack, List) and len(indices_stack) > 0
+                    source_groups = self._controller.groups
                     source_row = indices_stack.pop()
                     assert isinstance(source_row, int)
-                source_group = source_groups[source_row]
-                group = Group.from_group(source_group)
-                groups.insert(row + n, group)
-                n += 1
+                    while len(indices_stack) > 0:
+                        source_groups = source_groups[source_row].children
+                        source_row = indices_stack.pop()
+                        assert isinstance(source_row, int)
+                    source_group = source_groups[source_row]
+                    group = Group.from_group(source_group)
+                    groups.insert(row + n, group)
+                    n += 1
+            finally:
+                self._dropping = False
             return True
         if (
             data.hasFormat("x-napari-hierarchical-array")
@@ -400,3 +405,7 @@ class QGroupTreeModel(QAbstractItemModel):
             assert isinstance(group, Group)
             index = self.create_group_index(group, column=column)
             self.dataChanged.emit(index, index)
+
+    @property
+    def dropping(self) -> bool:
+        return self._dropping
