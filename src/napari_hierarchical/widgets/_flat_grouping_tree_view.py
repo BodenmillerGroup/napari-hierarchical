@@ -1,7 +1,7 @@
 from typing import Callable, Optional, Set
 
 from napari.utils.events import Event
-from qtpy.QtCore import QItemSelection, QSortFilterProxyModel
+from qtpy.QtCore import QItemSelection, QSortFilterProxyModel, Qt
 from qtpy.QtWidgets import QHeaderView, QTreeView, QWidget
 
 from .._controller import HierarchicalController
@@ -44,10 +44,9 @@ class QFlatGroupingTreeView(QTreeView):
         )
         self.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)
         self.setSelectionBehavior(QTreeView.SelectionBehavior.SelectRows)
-        self.setDragEnabled(True)
-        self.setAcceptDrops(True)
-        self.setDropIndicatorShown(True)
         self.setDragDropMode(QTreeView.DragDropMode.DragDrop)
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.setDropIndicatorShown(True)
         self.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self._connect_events()
 
@@ -88,7 +87,7 @@ class QFlatGroupingTreeView(QTreeView):
                 self._updating_current_arrays_selection = False
 
     def _on_current_arrays_selection_changed_event(self, event: Event) -> None:
-        if not self._updating_current_arrays_selection:
+        if not self._updating_current_arrays_selection and not self._model.dropping:
             # new_selection = QItemSelection()
             # for array in self._controller.current_arrays.selection:
             #     if self._model.flat_grouping is None:
