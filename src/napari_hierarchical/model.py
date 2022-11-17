@@ -123,7 +123,7 @@ class Array(ParentAwareEventedModel[Group]):
         new_array = Array(
             name=array.name, layer=array.layer, loaded_layer=array.loaded_layer
         )
-        new_array.flat_grouping_groups.update(array.groups)
+        new_array.flat_grouping_groups.update(array.flat_grouping_groups)
         return new_array
 
     def show(self) -> None:
