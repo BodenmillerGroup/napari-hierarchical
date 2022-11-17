@@ -1,7 +1,7 @@
 from typing import Optional, Set
 
 from napari.utils.events import Event, EventedList
-from qtpy.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange
+from qtpy.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange, Qt
 from qtpy.QtWidgets import QHeaderView, QTreeView, QWidget
 
 from .._controller import HierarchicalController
@@ -33,10 +33,9 @@ class QGroupTreeView(QTreeView):
         )
         self.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)
         self.setSelectionBehavior(QTreeView.SelectionBehavior.SelectRows)
-        self.setDragEnabled(True)
-        self.setAcceptDrops(True)
-        self.setDropIndicatorShown(True)
         self.setDragDropMode(QTreeView.DragDropMode.DragDrop)
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.setDropIndicatorShown(True)
         self.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self._connect_events()
 
