@@ -1,6 +1,10 @@
 import os
 from typing import List, Optional, Set, Union
 
+from napari._qt.layer_controls.qt_layer_controls_base import QtLayerControls
+from napari._qt.layer_controls.qt_layer_controls_container import (
+    create_qt_layer_controls,
+)
 from napari.layers import Layer
 from napari.utils.events import Event, EventedList, SelectableEventedList
 from napari.viewer import Viewer
@@ -9,6 +13,7 @@ from pluggy import PluginManager
 from . import hookspecs
 from .model import Array, Group
 from .utils.parent_aware import ParentAware
+from .utils.proxy_image import ProxyImage
 
 PathLike = Union[str, os.PathLike]
 
@@ -19,6 +24,8 @@ class HierarchicalController:
         self._pm.add_hookspecs(hookspecs)
         self._pm.load_setuptools_entrypoints("napari-hierarchical")
         self._viewer: Optional[Viewer] = None
+        self._proxy_image: Optional[ProxyImage] = None
+        self._layer_controls: Optional[QtLayerControls] = None
         self._groups: EventedList[Group] = EventedList(
             basetype=Group, lookup={str: lambda group: group.name}
         )
@@ -46,6 +53,11 @@ class HierarchicalController:
     def register_viewer(self, viewer: Viewer) -> None:
         assert self._viewer is None
         self._viewer = viewer
+        self._proxy_image = ProxyImage(viewer.layers)
+        self._layer_controls = create_qt_layer_controls(self._proxy_image)
+        layer_controls_container = viewer.window._qt_window._qt_viewer.controls
+        layer_controls_container.widgets[self._proxy_image] = self._layer_controls
+        layer_controls_container.addWidget(self._layer_controls)
         viewer.layers.events.connect(self._on_layers_event)
         viewer.layers.selection.events.changed.connect(
             self._on_layers_selection_changed_event
@@ -303,7 +315,14 @@ class HierarchicalController:
             # ignored intentionally
 
     def _on_layers_selection_changed_event(self, event: Event) -> None:
-        if self._viewer is not None and not self._updating_layers_selection:
+        assert self._viewer is not None
+        if len(self._viewer.layers.selection) > 1:
+            assert self._layer_controls is not None
+            layer_controls_container = (
+                self._viewer.window._qt_window._qt_viewer.controls
+            )
+            layer_controls_container.setCurrentWidget(self._layer_controls)
+        if not self._updating_layers_selection:
             self._updating_current_arrays_selection = True
             try:
                 self._current_arrays.selection = {
