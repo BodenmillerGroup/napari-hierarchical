@@ -183,12 +183,14 @@ class HierarchicalController:
     def _on_group_nested_list_event(self, event: Event) -> None:
         source_list_event = event.source_list_event
         assert isinstance(source_list_event, Event)
-        group_children = source_list_event.source
-        assert isinstance(group_children, ParentAware)
-        group = group_children.parent
+        group_arrays_or_children = source_list_event.source
+        assert isinstance(group_arrays_or_children, ParentAware)
+        group = group_arrays_or_children.parent
         assert isinstance(group, Group)
-        if group_children == group.children:
+        if group_arrays_or_children == group.children:
             self._process_groups_event(source_list_event)
+        elif group_arrays_or_children == group.arrays:
+            self._process_arrays_event(source_list_event)
 
     def _process_groups_event(self, event: Event, connect: bool = False) -> None:
         if not isinstance(event.sources[0], EventedList):
@@ -243,6 +245,12 @@ class HierarchicalController:
                 for group in groups:
                     assert isinstance(group, Group)
                     group.nested_list_event.connect(self._on_group_nested_list_event)
+
+    def _process_arrays_event(self, event: Event) -> None:
+        if not isinstance(event.sources[0], EventedList):
+            return
+        if event.type in ("inserted", "removed", "changed"):
+            self._update_current_arrays()
 
     def _on_selected_groups_event(self, event: Event) -> None:
         if not isinstance(event.sources[0], EventedList):

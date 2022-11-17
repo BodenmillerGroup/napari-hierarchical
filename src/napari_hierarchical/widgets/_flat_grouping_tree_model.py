@@ -36,7 +36,6 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
         self._dropping = False
         self._flat_groups: List[str] = []
         self._flat_group_arrays: Dict[str, Arrays] = {}
-        self._pending_flat_group_changes: Dict[Array, str] = {}
         for array in controller.current_arrays:
             if flat_grouping is None or flat_grouping in array.flat_grouping_groups:
                 flat_group = self._get_flat_group(array)
@@ -369,8 +368,8 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             assert row == -1
             assert column == -1
             assert parent.isValid()
-            arrays = parent.internalPointer()
-            assert isinstance(arrays, Arrays)
+            target_arrays = parent.internalPointer()
+            assert isinstance(target_arrays, Arrays)
             indices_stacks = pickle.loads(
                 data.data("x-napari-hierarchical-array").data()
             )
@@ -380,17 +379,18 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                 while len(indices_stacks) > 0:
                     indices_stack = indices_stacks.pop(0)
                     assert isinstance(indices_stack, List) and len(indices_stack) > 1
-                    groups = self._controller.groups
-                    row = indices_stack.pop()
-                    assert isinstance(row, int)
+                    source_groups = self._controller.groups
+                    source_row = indices_stack.pop()
+                    assert isinstance(source_row, int)
                     while len(indices_stack) > 1:
-                        groups = groups[row].children
-                        row = indices_stack.pop()
-                        assert isinstance(row, int)
-                    group = groups[row]
-                    array = group.arrays[indices_stack.pop()]
-                    assert array not in self._pending_flat_group_changes
-                    self._pending_flat_group_changes[array] = arrays.flat_group
+                        source_groups = source_groups[source_row].children
+                        source_row = indices_stack.pop()
+                        assert isinstance(source_row, int)
+                    source_group = source_groups[source_row]
+                    source_array = source_group.arrays[indices_stack.pop()]
+                    array = Array.from_array(source_array)
+                    self._set_flat_group(array, target_arrays.flat_group)
+                    source_group.arrays.append(array)
             finally:
                 self._dropping = False
             return True
@@ -402,13 +402,10 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
         if parent.isValid():
             arrays = parent.internalPointer()
             assert isinstance(arrays, Arrays)
-            if 0 <= row < row + count <= len(arrays) and all(
-                array in self._pending_flat_group_changes
-                for array in arrays[row : row + count]
-            ):
-                for array in list(arrays[row : row + count]):
-                    flat_group = self._pending_flat_group_changes.pop(array)
-                    self._set_flat_group(array, flat_group)
+            if 0 <= row < row + count <= len(arrays):
+                for array in list(arrays):
+                    assert array.parent is not None
+                    array.parent.arrays.remove(array)
                 return True
         return False
 
