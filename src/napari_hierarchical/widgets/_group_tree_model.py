@@ -49,11 +49,12 @@ class QGroupTreeModel(QAbstractItemModel):
     ) -> QModelIndex:
         if 0 <= column < len(self.COLUMNS):
             if parent.isValid():
-                parent_group = parent.internalPointer()
-                assert isinstance(parent_group, Group)
-                if 0 <= row < len(parent_group.children):
-                    group = parent_group.children[row]
-                    return self.createIndex(row, column, object=group)
+                if parent.column() == self.COLUMNS.NAME:
+                    parent_group = parent.internalPointer()
+                    assert isinstance(parent_group, Group)
+                    if 0 <= row < len(parent_group.children):
+                        group = parent_group.children[row]
+                        return self.createIndex(row, column, object=group)
             elif 0 <= row < len(self._controller.groups):
                 group = self._controller.groups[row]
                 return self.createIndex(row, column, object=group)
@@ -67,14 +68,16 @@ class QGroupTreeModel(QAbstractItemModel):
                 return self.create_group_index(group.parent)
         return QModelIndex()
 
-    def rowCount(self, index: QModelIndex = QModelIndex()) -> int:
-        if index.isValid():
-            group = index.internalPointer()
-            assert isinstance(group, Group)
-            return len(group.children)
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        if parent.isValid():
+            if parent.column() == self.COLUMNS.NAME:
+                group = parent.internalPointer()
+                assert isinstance(group, Group)
+                return len(group.children)
+            return 0
         return len(self._controller.groups)
 
-    def columnCount(self, index: QModelIndex = QModelIndex()) -> int:
+    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return len(self.COLUMNS)
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:

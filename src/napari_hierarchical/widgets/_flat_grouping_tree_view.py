@@ -1,17 +1,12 @@
 from typing import Callable, Optional, Set
 
 from napari.utils.events import Event
-from qtpy.QtCore import (
-    QItemSelection,
-    QItemSelectionModel,
-    QItemSelectionRange,
-    QSortFilterProxyModel,
-)
+from qtpy.QtCore import QItemSelection, QSortFilterProxyModel
 from qtpy.QtWidgets import QHeaderView, QTreeView, QWidget
 
 from .._controller import HierarchicalController
 from ..model import Array
-from ._flat_grouping_tree_model import QFlatGroupingTreeModel
+from ._flat_grouping_tree_model import Arrays, QFlatGroupingTreeModel
 
 
 # TODO styling (checkboxes)
@@ -74,19 +69,17 @@ class QFlatGroupingTreeView(QTreeView):
     ) -> None:
         if not self._updating_selection:
             new_current_arrays_selection: Set[Array] = set()
-            selection = self._proxy_model.mapSelectionToSource(
-                self.selectionModel().selection()
-            )
+            selection = self.selectionModel().selection()
+            selection = self._proxy_model.mapSelectionToSource(selection)
             for index in selection.indexes():
                 if index.column() == 0:
-                    array_or_flat_group = index.internalPointer()
-                    assert isinstance(array_or_flat_group, (Array, str))
-                    if isinstance(array_or_flat_group, Array):
-                        array = array_or_flat_group
+                    array_or_arrays = index.internalPointer()
+                    assert isinstance(array_or_arrays, (Array, Arrays))
+                    if isinstance(array_or_arrays, Array):
+                        array = array_or_arrays
                         new_current_arrays_selection.add(array)
                     else:
-                        flat_group = array_or_flat_group
-                        arrays = self._model.flat_group_arrays[flat_group]
+                        arrays = array_or_arrays
                         new_current_arrays_selection.update(arrays)
             self._updating_current_arrays_selection = True
             try:
@@ -96,21 +89,22 @@ class QFlatGroupingTreeView(QTreeView):
 
     def _on_current_arrays_selection_changed_event(self, event: Event) -> None:
         if not self._updating_current_arrays_selection:
-            new_selection = QItemSelection()
-            for array in self._controller.current_arrays.selection:
-                if self._model.flat_grouping is None:
-                    index = self._model.create_flat_group_index(array.name)
-                    new_selection.append(QItemSelectionRange(index))
-                elif self._model.flat_grouping in array.flat_grouping_groups:
-                    flat_group = array.flat_grouping_groups[self._model.flat_grouping]
-                    index = self._model.create_flat_group_index(flat_group)
-                    new_selection.append(QItemSelectionRange(index))
-            new_selection = self._proxy_model.mapSelectionFromSource(new_selection)
+            # new_selection = QItemSelection()
+            # for array in self._controller.current_arrays.selection:
+            #     if self._model.flat_grouping is None:
+            #         index = self._model.create_flat_group_index(array.name)
+            #         new_selection.append(QItemSelectionRange(index))
+            #     elif self._model.flat_grouping in array.flat_grouping_groups:
+            #         flat_group = array.flat_grouping_groups[self._model.flat_grouping]
+            #         index = self._model.create_flat_group_index(flat_group)
+            #         new_selection.append(QItemSelectionRange(index))
+            # new_selection = self._proxy_model.mapSelectionFromSource(new_selection)
             self._updating_selection = True
             try:
-                self.selectionModel().select(
-                    new_selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
-                )
+                self.selectionModel().clear()  # TODO select arrays
+                # self.selectionModel().select(
+                #     new_selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
+                # )
             finally:
                 self._updating_selection = False
 
