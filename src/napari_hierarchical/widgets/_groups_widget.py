@@ -78,8 +78,9 @@ class QGroupsWidget(QWidget):
     def _on_selected_groups_event(self, event: Event) -> None:
         if not isinstance(event.sources[0], EventedList):
             return
-        logger.debug(f"event={event.type}")
-        self._update_delete_group_push_button_enabled()
+        if event.type in ("inserted", "removed", "changed"):
+            logger.debug(f"event={event.type}")
+            self._update_delete_group_push_button_enabled()
 
     def _on_new_group_push_button_clicked(self, checked: bool = False) -> None:
         logger.debug(f"checked={checked}")

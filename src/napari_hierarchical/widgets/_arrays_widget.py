@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, Union
 
-from napari.utils.events import Event
+from napari.utils.events import Event, EventedList
 from napari.viewer import Viewer
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
@@ -86,8 +86,11 @@ class QArraysWidget(QWidget):
         )
 
     def _on_selected_groups_event(self, event: Event) -> None:
-        logger.debug(f"event={event.type}")
-        self._update_new_array_push_buttons_enabled()
+        if not isinstance(event.sources[0], EventedList):
+            return
+        if event.type in ("inserted", "removed", "changed"):
+            logger.debug(f"event={event.type}")
+            self._update_new_array_push_buttons_enabled()
 
     def _on_current_arrays_selection_changed_event(self, event: Event) -> None:
         logger.debug(f"event={event.type}")
