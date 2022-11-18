@@ -404,9 +404,9 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                 logger.debug(f"target_arrays={target_arrays}, array={array}")
                 self._dropping = True
                 try:
-                    array_copy = Array.from_array(array)
-                    self._set_flat_group(array_copy, target_arrays.flat_group)
-                    group.arrays.append(array_copy)
+                    new_array = Array.from_array(array)
+                    self._set_flat_group(new_array, target_arrays.flat_group)
+                    group.arrays.append(new_array)
                 finally:
                     self._dropping = False
             return True

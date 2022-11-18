@@ -267,8 +267,8 @@ class QGroupTreeModel(QAbstractItemModel):
                 logger.debug(f"target_groups={target_groups}, group={group}")
                 self._dropping = True
                 try:
-                    group_copy = Group.from_group(group)
-                    target_groups.insert(row + row_offset, group_copy)
+                    new_group = Group.from_group(group)
+                    target_groups.insert(row + row_offset, new_group)
                 finally:
                     self._dropping = False
                 row_offset += 1
