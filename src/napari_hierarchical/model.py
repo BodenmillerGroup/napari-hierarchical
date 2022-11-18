@@ -62,7 +62,7 @@ class Group(NestedParentAwareEventedModel["Group"]):
                 yield from child.iter_children(recursive=recursive)
 
     def __hash__(self) -> int:
-        return id(self)
+        return object.__hash__(self)
 
     def __repr__(self) -> str:
         return self.name
@@ -138,7 +138,7 @@ class Array(ParentAwareEventedModel[Group]):
         self.layer.visible = False
 
     def __hash__(self) -> int:
-        return id(self)
+        return object.__hash__(self)
 
     def __repr__(self) -> str:
         return self.name
