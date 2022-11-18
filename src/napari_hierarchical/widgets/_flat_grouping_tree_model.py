@@ -136,7 +136,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             if isinstance(array_or_arrays, Array):
                 array = array_or_arrays
                 if index.column() == self.COLUMNS.NAME:
-                    if role == Qt.ItemDataRole.DisplayRole:
+                    if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
                         return array.name
                 elif index.column() == self.COLUMNS.LOADED:
                     if role == Qt.ItemDataRole.CheckStateRole:
@@ -153,7 +153,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             else:
                 arrays = array_or_arrays
                 if index.column() == self.COLUMNS.NAME:
-                    if role == Qt.ItemDataRole.DisplayRole:
+                    if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
                         return arrays.flat_group
                 elif index.column() == self.COLUMNS.LOADED:
                     if role == Qt.ItemDataRole.CheckStateRole:
@@ -600,10 +600,12 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
         else:
             logger.debug(f"array={array}, flat_group={flat_group}")
             array_row = len(self._flat_group_arrays[flat_group])
-            flat_group_index = self.create_flat_group_index(flat_group)
-            self.beginInsertRows(flat_group_index, array_row, array_row)
+            if self._flat_grouping is not None:
+                flat_group_index = self.create_flat_group_index(flat_group)
+                self.beginInsertRows(flat_group_index, array_row, array_row)
             self._flat_group_arrays[flat_group].insert(array_row, array)
-            self.endInsertRows()
+            if self._flat_grouping is not None:
+                self.endInsertRows()
             first_flat_group_index = self.create_flat_group_index(
                 flat_group, column=self.COLUMNS.LOADED
             )
@@ -616,10 +618,12 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
         if any(a for a in self._flat_group_arrays[flat_group] if a != array):
             logger.debug(f"array={array}, flat_group={flat_group}")
             array_row = self._flat_group_arrays[flat_group].index(array)
-            flat_group_index = self.create_flat_group_index(flat_group)
-            self.beginRemoveRows(flat_group_index, array_row, array_row)
+            if self._flat_grouping is not None:
+                flat_group_index = self.create_flat_group_index(flat_group)
+                self.beginRemoveRows(flat_group_index, array_row, array_row)
             del self._flat_group_arrays[flat_group][array_row]
-            self.endRemoveRows()
+            if self._flat_grouping is not None:
+                self.endRemoveRows()
             first_flat_group_index = self.create_flat_group_index(
                 flat_group, column=self.COLUMNS.LOADED
             )
