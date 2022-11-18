@@ -104,7 +104,7 @@ class QFlatGroupingTreeView(QTreeView):
             #         index = self._model.create_flat_group_index(flat_group)
             #         new_selection.append(QItemSelectionRange(index))
             # new_selection = self._proxy_model.mapSelectionFromSource(new_selection)
-            logger.debug(f"event={event.type}")
+            logger.debug("")
             self._updating_selection = True
             try:
                 self.selectionModel().clear()  # TODO select arrays

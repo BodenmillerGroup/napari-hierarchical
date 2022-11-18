@@ -67,6 +67,9 @@ class Group(NestedParentAwareEventedModel["Group"]):
     def __repr__(self) -> str:
         return self.name
 
+    def __str__(self) -> str:
+        return repr(self)
+
     def _emit_loaded_event(self, source_array_event: Event) -> None:
         self.events.loaded(value=self.loaded, source_array_event=source_array_event)
         if self.parent is not None:
@@ -139,6 +142,9 @@ class Array(ParentAwareEventedModel[Group]):
 
     def __repr__(self) -> str:
         return self.name
+
+    def __str__(self) -> str:
+        return repr(self)
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name == "layer" and self.layer is not None:

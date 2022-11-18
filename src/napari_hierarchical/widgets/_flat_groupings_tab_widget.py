@@ -50,7 +50,7 @@ class QFlatGroupingsTabWidget(QTabWidget):
         self._register_array(array)
 
     def _on_current_arrays_changed_event(self, event: Event) -> None:
-        logger.debug(f"event={event.type}")
+        logger.debug("")
         array_or_arrays = event.value
         if isinstance(array_or_arrays, Array):
             array = array_or_arrays

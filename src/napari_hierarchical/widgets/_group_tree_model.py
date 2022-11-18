@@ -308,7 +308,6 @@ class QGroupTreeModel(QAbstractItemModel):
         return self.createIndex(row, column, object=group)
 
     def _on_groups_event(self, event: Event) -> None:
-        logger.debug(f"event={event.type}")
         self._process_groups_event(event, connect=True)
 
     def _on_group_nested_list_event(self, event: Event) -> None:
@@ -319,7 +318,6 @@ class QGroupTreeModel(QAbstractItemModel):
         group = group_children.parent
         assert isinstance(group, Group)
         if group_children == group.children:
-            logger.debug(f"event={event.type}")
             self._process_groups_event(source_list_event)
 
     def _process_groups_event(self, event: Event, connect: bool = False) -> None:
@@ -423,7 +421,7 @@ class QGroupTreeModel(QAbstractItemModel):
         elif source_event.type == "visible":
             column = self.COLUMNS.VISIBLE
         if column is not None:
-            logger.debug(f"event={event.type}")
+            logger.debug(f"source_event={source_event.type}")
             group = source_event.source
             assert isinstance(group, Group)
             index = self.create_group_index(group, column=column)

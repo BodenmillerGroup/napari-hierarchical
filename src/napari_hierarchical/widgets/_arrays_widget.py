@@ -93,7 +93,7 @@ class QArraysWidget(QWidget):
             self._update_new_array_push_buttons_enabled()
 
     def _on_current_arrays_selection_changed_event(self, event: Event) -> None:
-        logger.debug(f"event={event.type}")
+        logger.debug("")
         self._update_delete_array_push_button_enabled()
 
     def _on_new_points_array_push_button_clicked(self, checked: bool = False) -> None:

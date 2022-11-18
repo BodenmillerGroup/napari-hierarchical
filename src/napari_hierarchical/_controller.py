@@ -189,7 +189,6 @@ class HierarchicalController:
         return self._pm.hook.napari_hierarchical_get_array_saver(array=array)
 
     def _on_groups_event(self, event: Event) -> None:
-        logger.debug(f"event={event.type}")
         self._process_groups_event(event, connect=True)
 
     def _on_group_nested_list_event(self, event: Event) -> None:
@@ -200,10 +199,8 @@ class HierarchicalController:
         group = group_arrays_or_children.parent
         assert isinstance(group, Group)
         if group_arrays_or_children == group.children:
-            logger.debug(f"event={event.type}")
             self._process_groups_event(source_list_event)
         elif group_arrays_or_children == group.arrays:
-            logger.debug(f"event={event.type}")
             self._process_arrays_event(source_list_event)
 
     def _process_groups_event(self, event: Event, connect: bool = False) -> None:
@@ -280,7 +277,7 @@ class HierarchicalController:
 
     def _on_current_arrays_selection_changed_event(self, event: Event) -> None:
         if self._viewer is not None and not self._updating_current_arrays_selection:
-            logger.debug(f"event={event.type}")
+            logger.debug("")
             self._updating_layers_selection = True
             try:
                 self._viewer.layers.selection = {
@@ -356,7 +353,7 @@ class HierarchicalController:
             )
             layer_controls_container.setCurrentWidget(self._layer_controls)
         if not self._updating_layers_selection:
-            logger.debug(f"event={event.type}")
+            logger.debug("")
             self._updating_current_arrays_selection = True
             try:
                 self._current_arrays.selection = {
