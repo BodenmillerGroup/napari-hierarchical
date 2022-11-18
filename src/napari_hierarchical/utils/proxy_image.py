@@ -34,8 +34,7 @@ class ProxyImage(Image):
                     setattr(layer, event.type, value)
 
     def _on_layers_selection_changed_event(self, event: Event) -> None:
-        if event.type in ("inserted", "removed", "changed"):
-            self._update()
+        self._update()
 
     def _update(self) -> None:
         images = [layer for layer in self._layers.selection if isinstance(layer, Image)]
