@@ -31,14 +31,14 @@ class QGroupTreeModel(QAbstractItemModel):
         self._disconnect_events()
 
     def _connect_events(self) -> None:
-        self._controller.groups.events.connect(self._on_groups_event)
         for group in self._controller.groups:
             self._connect_group_events(group)
+        self._controller.groups.events.connect(self._on_groups_event)
 
     def _disconnect_events(self) -> None:
+        self._controller.groups.events.disconnect(self._on_groups_event)
         for group in self._controller.groups:
             self._disconnect_group_events(group)
-        self._controller.groups.events.disconnect(self._on_groups_event)
 
     def _connect_group_events(self, group: Group) -> None:
         group.nested_event.connect(self._on_group_nested_event)
