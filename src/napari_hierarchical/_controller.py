@@ -378,11 +378,11 @@ class HierarchicalController:
         new_current_arrays: Set[Array] = set()
         for group in selected_groups:
             new_current_arrays.update(group.iter_arrays(recursive=True))
-        self._current_arrays.selection.clear()
         for array in old_current_arrays.difference(new_current_arrays):
             self._current_arrays.remove(array)
         for array in new_current_arrays.difference(old_current_arrays):
             self._current_arrays.append(array)
+        self._current_arrays.selection.clear()
 
     @property
     def pm(self) -> PluginManager:
