@@ -94,6 +94,17 @@ class NestedParentAwareEventedModelList(ParentAwareEventedList[_NPAEMT, _PAT]):
         if self.parent is not None:
             self.parent._emit_nested_list_event(event)
 
+    def insert(self, index: int, value: _PAT) -> None:
+        value.set_parent(self.parent)
+        super().insert(index, value)
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            raise NotImplementedError("slicing is not supported")
+        result = super().__getitem__(key)
+        assert not isinstance(result, NestedParentAwareEventedModelList)
+        return result
+
     def __setitem__(
         self, key: Union[int, slice], value: Union[_PAT, Iterable[_PAT]]
     ) -> None:
@@ -127,10 +138,6 @@ class NestedParentAwareEventedModelList(ParentAwareEventedList[_NPAEMT, _PAT]):
             for old_item in old_value:
                 assert isinstance(old_item, ParentAware)
                 old_item.set_parent(None)
-
-    def insert(self, index: int, value: _PAT) -> None:
-        value.set_parent(self.parent)
-        super().insert(index, value)
 
     def set_parent(self, value: Optional[_NPAEMT]) -> None:
         super().set_parent(value)

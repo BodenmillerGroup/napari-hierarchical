@@ -293,7 +293,8 @@ class QGroupTreeModel(QAbstractItemModel):
         else:
             groups = self._controller.groups
         if 0 <= row < row + count <= len(groups):
-            for group in list(groups[row : row + count]):
+            groups_copy = [groups[i] for i in range(row, row + count)]
+            for group in groups_copy:
                 logger.debug(f"groups={groups}, group={group}")
                 groups.remove(group)
             return True

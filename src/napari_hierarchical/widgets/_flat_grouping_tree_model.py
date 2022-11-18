@@ -419,7 +419,8 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             arrays = parent.internalPointer()
             assert isinstance(arrays, Arrays)
             if 0 <= row < row + count <= len(arrays):
-                for array in list(arrays[row : row + count]):
+                arrays_copy = [arrays[i] for i in range(row, row + count)]
+                for array in arrays_copy:
                     group = array.parent
                     assert group is not None
                     logger.debug(f"arrays={group.arrays}, array={array}")
