@@ -64,6 +64,9 @@ class Group(NestedParentAwareEventedModel["Group"]):
     def __hash__(self) -> int:
         return object.__hash__(self)
 
+    def __eq__(self, other) -> bool:
+        return object.__eq__(self, other)
+
     def __repr__(self) -> str:
         return self.name
 
@@ -139,6 +142,9 @@ class Array(ParentAwareEventedModel[Group]):
 
     def __hash__(self) -> int:
         return object.__hash__(self)
+
+    def __eq__(self, other) -> bool:
+        return object.__eq__(self, other)
 
     def __repr__(self) -> str:
         return self.name
