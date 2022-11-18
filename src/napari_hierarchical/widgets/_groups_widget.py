@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Union
 
 from napari.utils.events import Event, EventedList
@@ -15,6 +16,15 @@ from qtpy.QtWidgets import (
 from .._controller import controller
 from ..model import Group
 from ._group_tree_view import QGroupTreeView
+
+logger = logging.getLogger(__name__)
+
+
+def _get_group_level(group: Group, current_level: int = 0) -> int:
+    if group.parent is not None:
+        current_level += 1
+        return _get_group_level(group.parent, current_level=current_level)
+    return current_level
 
 
 # TODO styling (buttons)
@@ -48,7 +58,7 @@ class QGroupsWidget(QWidget):
         self._group_tree_view = QGroupTreeView(controller)
         self._init_layout()
         self._connect_events()
-        self._check_delete_group_push_button_enabled()
+        self._update_delete_group_push_button_enabled()
 
     def __del__(self) -> None:
         self._disconnect_events()
@@ -68,9 +78,11 @@ class QGroupsWidget(QWidget):
     def _on_selected_groups_event(self, event: Event) -> None:
         if not isinstance(event.sources[0], EventedList):
             return
-        self._check_delete_group_push_button_enabled()
+        logger.debug(f"event={event.type}")
+        self._update_delete_group_push_button_enabled()
 
     def _on_new_group_push_button_clicked(self, checked: bool = False) -> None:
+        logger.debug(f"checked={checked}")
         if len(controller.selected_groups) == 1:
             groups = controller.selected_groups[0].children
         else:
@@ -81,13 +93,8 @@ class QGroupsWidget(QWidget):
         controller.selected_groups.append(group)
 
     def _on_delete_group_push_button_clicked(self, checked: bool = False) -> None:
-        def get_level(group: Group, current_level: int = 0) -> int:
-            if group.parent is not None:
-                current_level += 1
-                return get_level(group.parent, current_level=current_level)
-            return current_level
-
-        groups = sorted(controller.selected_groups, key=get_level, reverse=True)
+        logger.debug(f"checked={checked}")
+        groups = sorted(controller.selected_groups, key=_get_group_level, reverse=True)
         controller.selected_groups.clear()
         for group in groups:
             if group.parent is not None:
@@ -95,5 +102,7 @@ class QGroupsWidget(QWidget):
             else:
                 controller.groups.remove(group)
 
-    def _check_delete_group_push_button_enabled(self) -> None:
-        self._delete_group_push_button.setEnabled(len(controller.selected_groups) > 0)
+    def _update_delete_group_push_button_enabled(self) -> None:
+        enabled = len(controller.selected_groups) > 0
+        logger.debug(f"enabled={enabled}")
+        self._delete_group_push_button.setEnabled(enabled)

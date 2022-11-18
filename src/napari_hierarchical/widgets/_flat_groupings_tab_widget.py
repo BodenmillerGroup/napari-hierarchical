@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List, Optional
 
 from napari.utils.events import Event
@@ -6,6 +7,8 @@ from qtpy.QtWidgets import QTabWidget, QWidget
 from .._controller import HierarchicalController
 from ..model import Array
 from ._flat_grouping_tree_view import QFlatGroupingTreeView
+
+logger = logging.getLogger(__name__)
 
 
 class QFlatGroupingsTabWidget(QTabWidget):
@@ -41,11 +44,13 @@ class QFlatGroupingsTabWidget(QTabWidget):
         )
 
     def _on_current_arrays_inserted_event(self, event: Event) -> None:
+        logger.debug(f"event={event.type}")
         array = event.value
         assert isinstance(array, Array)
         self._register_array(array)
 
     def _on_current_arrays_changed_event(self, event: Event) -> None:
+        logger.debug(f"event={event.type}")
         array_or_arrays = event.value
         if isinstance(array_or_arrays, Array):
             array = array_or_arrays
@@ -60,15 +65,17 @@ class QFlatGroupingsTabWidget(QTabWidget):
     def _register_array(self, array: Array) -> None:
         for flat_grouping in array.flat_grouping_groups.keys():
             if flat_grouping not in self._flat_grouping_tree_views:
+                logger.debug(f"array={array}")
                 flat_grouping_tree_view = QFlatGroupingTreeView(
                     self._controller,
                     flat_grouping=flat_grouping,
-                    close_callback=lambda: self._close_flat_grouping_tab(flat_grouping),
+                    close_callback=lambda: self._close_tab(flat_grouping),
                 )
                 self.addTab(flat_grouping_tree_view, flat_grouping)
                 self._flat_grouping_tree_views[flat_grouping] = flat_grouping_tree_view
 
-    def _close_flat_grouping_tab(self, flat_grouping: str) -> None:
+    def _close_tab(self, flat_grouping: str) -> None:
+        logger.debug(f"flat_grouping={flat_grouping}")
         flat_grouping_tree_view = self._flat_grouping_tree_views.pop(flat_grouping)
         tab_index = self.indexOf(flat_grouping_tree_view)
         self.removeTab(tab_index)

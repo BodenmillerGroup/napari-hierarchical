@@ -1,3 +1,4 @@
+import logging
 from typing import Callable, Optional, Set
 
 from napari.utils.events import Event
@@ -7,6 +8,8 @@ from qtpy.QtWidgets import QHeaderView, QTreeView, QWidget
 from .._controller import HierarchicalController
 from ..model import Array
 from ._flat_grouping_tree_model import Arrays, QFlatGroupingTreeModel
+
+logger = logging.getLogger(__name__)
 
 
 # TODO styling (checkboxes)
@@ -67,6 +70,9 @@ class QFlatGroupingTreeView(QTreeView):
         self, selected: QItemSelection, deselected: QItemSelection
     ) -> None:
         if not self._updating_selection:
+            logger.debug(
+                f"selected={selected.count()}, deselected={deselected.count()}"
+            )
             new_current_arrays_selection: Set[Array] = set()
             selection = self.selectionModel().selection()
             selection = self._proxy_model.mapSelectionToSource(selection)
@@ -98,6 +104,7 @@ class QFlatGroupingTreeView(QTreeView):
             #         index = self._model.create_flat_group_index(flat_group)
             #         new_selection.append(QItemSelectionRange(index))
             # new_selection = self._proxy_model.mapSelectionFromSource(new_selection)
+            logger.debug(f"event={event.type}")
             self._updating_selection = True
             try:
                 self.selectionModel().clear()  # TODO select arrays

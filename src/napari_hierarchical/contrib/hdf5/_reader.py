@@ -38,6 +38,8 @@ def _create_group(
         elif isinstance(hdf5_item, h5py.Dataset):
             array = _create_array(hdf5_file, [*hdf5_names, hdf5_name], hdf5_item)
             group.arrays.append(array)
+        else:
+            raise NotImplementedError()
     return group
 
 

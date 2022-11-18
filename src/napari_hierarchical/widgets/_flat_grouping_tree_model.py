@@ -1,3 +1,4 @@
+import logging
 import pickle
 from enum import IntEnum
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence
@@ -9,11 +10,16 @@ from .._controller import HierarchicalController
 from ..model import Array, Group
 from ..utils.parent_aware import ParentAware
 
+logger = logging.getLogger(__name__)
+
 
 class Arrays(List[Array]):
     def __init__(self, flat_group: str, iterable: Iterable[Array]) -> None:
         super().__init__(iterable)
         self.flat_group = flat_group
+
+    def __repr__(self) -> str:
+        return self.flat_group
 
 
 class QFlatGroupingTreeModel(QAbstractItemModel):
@@ -142,6 +148,8 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                         if array.visible:
                             return Qt.CheckState.Checked
                         return Qt.CheckState.Unchecked
+                else:
+                    raise NotImplementedError()
             else:
                 arrays = array_or_arrays
                 if index.column() == self.COLUMNS.NAME:
@@ -163,6 +171,8 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                         if n_visible == sum(array.loaded for array in arrays):
                             return Qt.CheckState.Checked
                         return Qt.CheckState.PartiallyChecked
+                else:
+                    raise NotImplementedError()
         return None
 
     def setData(
@@ -172,6 +182,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             assert 0 <= index.column() < len(self.COLUMNS)
             array_or_arrays = index.internalPointer()
             assert isinstance(array_or_arrays, (Array, Arrays))
+            logger.debug(f"array_or_arrays={array_or_arrays}, value={value}")
             if isinstance(array_or_arrays, Array):
                 array = array_or_arrays
                 if index.column() == self.COLUMNS.NAME:
@@ -195,6 +206,8 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                         else:
                             array.hide()
                         return True
+                else:
+                    raise NotImplementedError()
             else:
                 arrays = array_or_arrays
                 if index.column() == self.COLUMNS.NAME:
@@ -226,6 +239,8 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                                 if array.loaded:
                                     array.hide()
                         return True
+                else:
+                    raise NotImplementedError()
         return False
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
@@ -374,25 +389,26 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                 data.data("x-napari-hierarchical-array").data()
             )
             assert isinstance(indices_stacks, List) and len(indices_stacks) > 0
-            self._dropping = True
-            try:
-                while len(indices_stacks) > 0:
-                    indices_stack = indices_stacks.pop(0)
-                    assert isinstance(indices_stack, List) and len(indices_stack) > 1
-                    source_groups = self._controller.groups
+            while len(indices_stacks) > 0:
+                indices_stack = indices_stacks.pop(0)
+                assert isinstance(indices_stack, List) and len(indices_stack) > 1
+                source_groups = self._controller.groups
+                source_row = indices_stack.pop()
+                assert isinstance(source_row, int)
+                while len(indices_stack) > 1:
+                    source_groups = source_groups[source_row].children
                     source_row = indices_stack.pop()
                     assert isinstance(source_row, int)
-                    while len(indices_stack) > 1:
-                        source_groups = source_groups[source_row].children
-                        source_row = indices_stack.pop()
-                        assert isinstance(source_row, int)
-                    source_group = source_groups[source_row]
-                    source_array = source_group.arrays[indices_stack.pop()]
-                    array = Array.from_array(source_array)
-                    self._set_flat_group(array, target_arrays.flat_group)
-                    source_group.arrays.append(array)
-            finally:
-                self._dropping = False
+                group = source_groups[source_row]
+                array = group.arrays[indices_stack.pop()]
+                logger.debug(f"target_arrays={target_arrays}, array={array}")
+                self._dropping = True
+                try:
+                    array_copy = Array.from_array(array)
+                    self._set_flat_group(array_copy, target_arrays.flat_group)
+                    group.arrays.append(array_copy)
+                finally:
+                    self._dropping = False
             return True
         return False
 
@@ -403,9 +419,11 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             arrays = parent.internalPointer()
             assert isinstance(arrays, Arrays)
             if 0 <= row < row + count <= len(arrays):
-                for array in list(arrays):
-                    assert array.parent is not None
-                    array.parent.arrays.remove(array)
+                for array in list(arrays[row : row + count]):
+                    group = array.parent
+                    assert group is not None
+                    logger.debug(f"arrays={group.arrays}, array={array}")
+                    group.arrays.remove(array)
                 return True
         return False
 
@@ -423,6 +441,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
         if not isinstance(event.sources[0], EventedList):
             return
         if event.type == "inserted":
+            logger.debug(f"event={event.type}")
             array = event.value
             assert isinstance(array, Array)
             if (
@@ -433,6 +452,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                 self._add_array_to_flat_group(array, flat_group)
             self._connect_array_events(array)
         elif event.type == "removed":
+            logger.debug(f"event={event.type}")
             array = event.value
             assert isinstance(array, Array)
             self._disconnect_array_events(array)
@@ -444,6 +464,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                 self._remove_array_from_flat_group(array, flat_group)
                 self._close_if_empty()
         elif event.type == "changed" and isinstance(event.index, int):
+            logger.debug(f"event={event.type}")
             old_array = event.old_value
             assert isinstance(old_array, Array)
             self._disconnect_array_events(old_array)
@@ -464,6 +485,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             self._connect_array_events(array)
             self._close_if_empty()
         elif event.type == "changed":
+            logger.debug(f"event={event.type}")
             old_arrays = event.old_value
             assert isinstance(old_arrays, List)
             for old_array in old_arrays:
@@ -497,15 +519,18 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
         array = flat_grouping_groups.parent
         assert isinstance(array, Array)
         if event.type == "added" and event.key == self._flat_grouping:
+            logger.debug(f"event={event.type}")
             flat_group = event.value
             assert isinstance(flat_group, str)
             self._add_array_to_flat_group(array, flat_group)
         elif event.type == "removed" and event.key == self._flat_grouping:
+            logger.debug(f"event={event.type}")
             flat_group = event.value
             assert isinstance(flat_group, str)
             self._remove_array_from_flat_group(array, flat_group)
             self._close_if_empty()
         elif event.type == "changed" and event.key == self._flat_grouping:
+            logger.debug(f"event={event.type}")
             old_flat_group = event.old_value
             assert isinstance(old_flat_group, str)
             self._remove_array_from_flat_group(array, old_flat_group)
@@ -514,6 +539,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             self._add_array_to_flat_group(array, flat_group)
 
     def _on_array_name_event(self, event: Event) -> None:
+        logger.debug(f"event={event.type}")
         assert self._flat_grouping is None
         array = event.source
         assert isinstance(array, Array)
@@ -533,6 +559,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             self._flat_grouping is None
             or self._flat_grouping in array.flat_grouping_groups
         ):
+            logger.debug(f"event={event.type}")
             if self._flat_grouping is not None:
                 array_index = self.create_array_index(array, column=self.COLUMNS.LOADED)
                 self.dataChanged.emit(array_index, array_index)
@@ -549,6 +576,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             self._flat_grouping is None
             or self._flat_grouping in array.flat_grouping_groups
         ):
+            logger.debug(f"event={event.type}")
             if self._flat_grouping is not None:
                 array_index = self.create_array_index(
                     array, column=self.COLUMNS.VISIBLE
@@ -562,12 +590,14 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
 
     def _add_array_to_flat_group(self, array: Array, flat_group: str) -> None:
         if flat_group not in self._flat_groups:
+            logger.debug(f"array={array}, flat_group={flat_group} [add group]")
             flat_group_row = len(self._flat_groups)
             self.beginInsertRows(QModelIndex(), flat_group_row, flat_group_row)
             self._flat_groups.insert(flat_group_row, flat_group)
             self._flat_group_arrays[flat_group] = Arrays(flat_group, [array])
             self.endInsertRows()
         else:
+            logger.debug(f"array={array}, flat_group={flat_group}")
             array_row = len(self._flat_group_arrays[flat_group])
             flat_group_index = self.create_flat_group_index(flat_group)
             self.beginInsertRows(flat_group_index, array_row, array_row)
@@ -583,6 +613,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
 
     def _remove_array_from_flat_group(self, array: Array, flat_group: str) -> None:
         if any(a for a in self._flat_group_arrays[flat_group] if a != array):
+            logger.debug(f"array={array}, flat_group={flat_group}")
             array_row = self._flat_group_arrays[flat_group].index(array)
             flat_group_index = self.create_flat_group_index(flat_group)
             self.beginRemoveRows(flat_group_index, array_row, array_row)
@@ -596,6 +627,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             )
             self.dataChanged.emit(first_flat_group_index, last_flat_group_index)
         else:
+            logger.debug(f"array={array}, flat_group={flat_group} [remove group]")
             flat_group_row = self._flat_groups.index(flat_group)
             self.beginRemoveRows(QModelIndex(), flat_group_row, flat_group_row)
             del self._flat_groups[flat_group_row]
@@ -608,6 +640,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
         return array.name
 
     def _set_flat_group(self, array: Array, value: str) -> None:
+        logger.debug(f"array={array}, value={value}")
         if self._flat_grouping is not None:
             array.flat_grouping_groups[self._flat_grouping] = value
         else:
@@ -615,6 +648,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
 
     def _close_if_empty(self) -> None:
         if len(self._flat_groups) == 0 and self._close_callback is not None:
+            logger.debug("")
             self._disconnect_events()
             self._close_callback()
 

@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Set
 
 from napari.utils.events import Event, EventedList
@@ -7,6 +8,8 @@ from qtpy.QtWidgets import QHeaderView, QTreeView, QWidget
 from .._controller import HierarchicalController
 from ..model import Group
 from ._group_tree_model import QGroupTreeModel
+
+logger = logging.getLogger(__name__)
 
 
 # TODO styling (checkboxes)
@@ -54,6 +57,9 @@ class QGroupTreeView(QTreeView):
         self, selected: QItemSelection, deselected: QItemSelection
     ) -> None:
         if not self._updating_selection:
+            logger.debug(
+                f"selected={selected.count()}, deselected={deselected.count()}"
+            )
             old_selected_groups = set(self._controller.selected_groups)
             new_selected_groups: Set[Group] = set()
             for index in self.selectionModel().selectedRows():
@@ -77,6 +83,7 @@ class QGroupTreeView(QTreeView):
             and not self._updating_selected_groups
             and not self._model.dropping
         ):
+            logger.debug(f"event={event.type}")
             new_selection = QItemSelection()
             for group in self._controller.selected_groups:
                 index = self._model.create_group_index(group)

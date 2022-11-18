@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import List, Optional, Set, Union
 
@@ -16,6 +17,8 @@ from .utils.parent_aware import ParentAware
 from .utils.proxy_image import ProxyImage
 
 PathLike = Union[str, os.PathLike]
+
+logger = logging.getLogger(__name__)
 
 
 class HierarchicalController:
@@ -89,6 +92,7 @@ class HierarchicalController:
         return self._get_array_saver_function(array) is not None
 
     def read_group(self, path: PathLike) -> Group:
+        logger.debug(f"path={path}")
         group_reader_function = self._get_group_reader_function(path)
         if group_reader_function is None:
             raise HierarchicalControllerException(f"No group reader found for {path}")
@@ -100,6 +104,7 @@ class HierarchicalController:
         return group
 
     def write_group(self, path: PathLike, group: Group) -> None:
+        logger.debug(f"path={path}, group={group}")
         group_writer_function = self._get_group_writer_function(path, group)
         if group_writer_function is None:
             raise HierarchicalControllerException(f"No group writer found for {path}")
@@ -109,20 +114,24 @@ class HierarchicalController:
             raise HierarchicalControllerException(e)
 
     def load_group(self, group: Group) -> None:
+        logger.debug(f"group={group}")
         for array in group.iter_arrays(recursive=True):
             self.load_array(array)
 
     def save_group(self, group: Group) -> None:
+        logger.debug(f"group={group}")
         for array in group.iter_arrays(recursive=True):
             self.save_array(array)
 
     def unload_group(self, group: Group) -> None:
+        logger.debug(f"group={group}")
         for array in group.iter_arrays(recursive=True):
             self.unload_array(array)
 
     def load_array(self, array: Array) -> None:
         assert self._viewer is not None
         if not array.loaded:
+            logger.debug(f"group={array}")
             if array.loaded_layer is not None:
                 array.layer = array.loaded_layer
             else:
@@ -139,6 +148,7 @@ class HierarchicalController:
             self._viewer.add_layer(array.layer)
 
     def save_array(self, array: Array) -> None:
+        logger.debug(f"group={array}")
         if array.layer is None:
             raise HierarchicalControllerException(f"Array is not loaded: {array}")
         array_saver_function = self._get_array_saver_function(array)
@@ -150,6 +160,7 @@ class HierarchicalController:
             raise HierarchicalControllerException(e)
 
     def unload_array(self, array: Array) -> None:
+        logger.debug(f"group={array}")
         if array.layer is not None:
             if self._viewer is not None and array.layer in self._viewer.layers:
                 self._viewer.layers.remove(array.layer)
@@ -178,6 +189,7 @@ class HierarchicalController:
         return self._pm.hook.napari_hierarchical_get_array_saver(array=array)
 
     def _on_groups_event(self, event: Event) -> None:
+        logger.debug(f"event={event.type}")
         self._process_groups_event(event, connect=True)
 
     def _on_group_nested_list_event(self, event: Event) -> None:
@@ -188,14 +200,17 @@ class HierarchicalController:
         group = group_arrays_or_children.parent
         assert isinstance(group, Group)
         if group_arrays_or_children == group.children:
+            logger.debug(f"event={event.type}")
             self._process_groups_event(source_list_event)
         elif group_arrays_or_children == group.arrays:
+            logger.debug(f"event={event.type}")
             self._process_arrays_event(source_list_event)
 
     def _process_groups_event(self, event: Event, connect: bool = False) -> None:
         if not isinstance(event.sources[0], EventedList):
             return
         if event.type == "inserted":
+            logger.debug(f"event={event.type}")
             if len(self._selected_groups) > 0:
                 self._selected_groups.clear()
             else:
@@ -205,6 +220,7 @@ class HierarchicalController:
                 assert isinstance(group, Group)
                 group.nested_list_event.connect(self._on_group_nested_list_event)
         elif event.type == "removed":
+            logger.debug(f"event={event.type}")
             if connect:
                 group = event.value
                 assert isinstance(group, Group)
@@ -214,6 +230,7 @@ class HierarchicalController:
             else:
                 self._update_current_arrays()
         elif event.type == "changed" and isinstance(event.index, int):
+            logger.debug(f"event={event.type}")
             if connect:
                 old_group = event.old_value
                 assert isinstance(old_group, Group)
@@ -227,6 +244,7 @@ class HierarchicalController:
                 assert isinstance(group, Group)
                 group.nested_list_event.connect(self._on_group_nested_list_event)
         elif event.type == "changed":
+            logger.debug(f"event={event.type}")
             if connect:
                 old_groups = event.old_value
                 assert isinstance(old_groups, List)
@@ -250,16 +268,19 @@ class HierarchicalController:
         if not isinstance(event.sources[0], EventedList):
             return
         if event.type in ("inserted", "removed", "changed"):
+            logger.debug(f"event={event.type}")
             self._update_current_arrays()
 
     def _on_selected_groups_event(self, event: Event) -> None:
         if not isinstance(event.sources[0], EventedList):
             return
         if event.type in ("inserted", "removed", "changed"):
+            logger.debug(f"event={event.type}")
             self._update_current_arrays()
 
     def _on_current_arrays_selection_changed_event(self, event: Event) -> None:
         if self._viewer is not None and not self._updating_current_arrays_selection:
+            logger.debug(f"event={event.type}")
             self._updating_layers_selection = True
             try:
                 self._viewer.layers.selection = {
@@ -274,8 +295,10 @@ class HierarchicalController:
         if not isinstance(event.sources[0], EventedList):
             return
         if event.type == "inserted":
+            logger.debug(f"event={event.type}")
             pass  # ignored intentionally
         elif event.type == "removed":
+            logger.debug(f"event={event.type}")
             layer = event.value
             assert isinstance(layer, Layer)
             array = next(
@@ -290,6 +313,7 @@ class HierarchicalController:
             if array is not None:
                 array.layer = None
         elif event.type == "changed" and isinstance(event.index, int):
+            logger.debug(f"event={event.type}")
             old_layer = event.old_value
             assert isinstance(old_layer, Layer)
             old_array = next(
@@ -305,6 +329,7 @@ class HierarchicalController:
                 old_array.layer = None
             # ignored intentionally
         elif event.type == "changed":
+            logger.debug(f"event={event.type}")
             old_layers = event.old_value
             assert isinstance(old_layers, List)
             for old_layer in old_layers:
@@ -331,6 +356,7 @@ class HierarchicalController:
             )
             layer_controls_container.setCurrentWidget(self._layer_controls)
         if not self._updating_layers_selection:
+            logger.debug(f"event={event.type}")
             self._updating_current_arrays_selection = True
             try:
                 self._current_arrays.selection = {
@@ -343,6 +369,7 @@ class HierarchicalController:
                 self._updating_current_arrays_selection = False
 
     def _update_current_arrays(self) -> None:
+        logger.debug("")
         if len(self._selected_groups) > 0:
             selected_groups = self._selected_groups
         else:

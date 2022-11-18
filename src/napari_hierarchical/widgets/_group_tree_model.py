@@ -1,3 +1,4 @@
+import logging
 import pickle
 from enum import IntEnum
 from typing import Any, Iterable, List, Optional
@@ -8,6 +9,8 @@ from qtpy.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QObject, Qt
 from .._controller import HierarchicalController
 from ..model import Group
 from ..utils.parent_aware import ParentAware
+
+logger = logging.getLogger(__name__)
 
 
 class QGroupTreeModel(QAbstractItemModel):
@@ -103,6 +106,8 @@ class QGroupTreeModel(QAbstractItemModel):
                     if group.visible:
                         return Qt.CheckState.Checked
                     return Qt.CheckState.Unchecked
+            else:
+                raise NotImplementedError()
         return None
 
     def setData(
@@ -114,11 +119,13 @@ class QGroupTreeModel(QAbstractItemModel):
             assert 0 <= index.column() < len(self.COLUMNS)
             if index.column() == self.COLUMNS.NAME:
                 if role == Qt.ItemDataRole.EditRole:
+                    logger.debug(f"group={group}, value={value}")
                     assert isinstance(value, str)
                     group.name = value
                     return True
             elif index.column() == self.COLUMNS.LOADED:
                 if role == Qt.ItemDataRole.CheckStateRole:
+                    logger.debug(f"group={group}, value={value}")
                     assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
                     if value == Qt.CheckState.Checked:
                         self._controller.load_group(group)
@@ -127,12 +134,15 @@ class QGroupTreeModel(QAbstractItemModel):
                     return True
             elif index.column() == self.COLUMNS.VISIBLE:
                 if role == Qt.ItemDataRole.CheckStateRole:
+                    logger.debug(f"group={group}, value={value}")
                     assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
                     if value == Qt.CheckState.Checked:
                         group.show()
                     else:
                         group.hide()
                     return True
+            else:
+                raise NotImplementedError()
         return False
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
@@ -232,36 +242,36 @@ class QGroupTreeModel(QAbstractItemModel):
             if parent.isValid():
                 parent_group = parent.internalPointer()
                 assert isinstance(parent_group, Group)
-                groups = parent_group.children
+                target_groups = parent_group.children
             else:
-                parent_group = None
-                groups = self._controller.groups
+                target_groups = self._controller.groups
             if row == -1 and column == -1:
-                row = len(groups)
-            assert 0 <= row <= len(groups)
+                row = len(target_groups)
+            assert 0 <= row <= len(target_groups)
             indices_stacks = pickle.loads(
                 data.data("x-napari-hierarchical-group").data()
             )
             assert isinstance(indices_stacks, List) and len(indices_stacks) > 0
-            self._dropping = True
-            try:
-                n = 0
-                while len(indices_stacks) > 0:
-                    indices_stack = indices_stacks.pop(0)
-                    assert isinstance(indices_stack, List) and len(indices_stack) > 0
-                    source_groups = self._controller.groups
+            row_offset = 0
+            while len(indices_stacks) > 0:
+                indices_stack = indices_stacks.pop(0)
+                assert isinstance(indices_stack, List) and len(indices_stack) > 0
+                source_groups = self._controller.groups
+                source_row = indices_stack.pop()
+                assert isinstance(source_row, int)
+                while len(indices_stack) > 0:
+                    source_groups = source_groups[source_row].children
                     source_row = indices_stack.pop()
                     assert isinstance(source_row, int)
-                    while len(indices_stack) > 0:
-                        source_groups = source_groups[source_row].children
-                        source_row = indices_stack.pop()
-                        assert isinstance(source_row, int)
-                    source_group = source_groups[source_row]
-                    group = Group.from_group(source_group)
-                    groups.insert(row + n, group)
-                    n += 1
-            finally:
-                self._dropping = False
+                group = source_groups[source_row]
+                logger.debug(f"target_groups={target_groups}, group={group}")
+                self._dropping = True
+                try:
+                    group_copy = Group.from_group(group)
+                    target_groups.insert(row + row_offset, group_copy)
+                finally:
+                    self._dropping = False
+                row_offset += 1
             return True
         if (
             data.hasFormat("x-napari-hierarchical-array")
@@ -283,8 +293,9 @@ class QGroupTreeModel(QAbstractItemModel):
         else:
             groups = self._controller.groups
         if 0 <= row < row + count <= len(groups):
-            for _ in range(count):
-                groups.pop(row)
+            for group in list(groups[row : row + count]):
+                logger.debug(f"groups={groups}, group={group}")
+                groups.remove(group)
             return True
         return False
 
@@ -297,6 +308,7 @@ class QGroupTreeModel(QAbstractItemModel):
         return self.createIndex(row, column, object=group)
 
     def _on_groups_event(self, event: Event) -> None:
+        logger.debug(f"event={event.type}")
         self._process_groups_event(event, connect=True)
 
     def _on_group_nested_list_event(self, event: Event) -> None:
@@ -307,6 +319,7 @@ class QGroupTreeModel(QAbstractItemModel):
         group = group_children.parent
         assert isinstance(group, Group)
         if group_children == group.children:
+            logger.debug(f"event={event.type}")
             self._process_groups_event(source_list_event)
 
     def _process_groups_event(self, event: Event, connect: bool = False) -> None:
@@ -322,15 +335,18 @@ class QGroupTreeModel(QAbstractItemModel):
             return QModelIndex()
 
         if event.type == "inserting":
+            logger.debug(f"event={event.type}")
             assert isinstance(event.index, int) and 0 <= event.index <= len(groups)
             self.beginInsertRows(get_parent_index(), event.index, event.index)
         elif event.type == "inserted":
+            logger.debug(f"event={event.type}")
             self.endInsertRows()
             if connect:
                 group = event.value
                 assert isinstance(group, Group)
                 self._connect_group_events(group)
         elif event.type == "removing":
+            logger.debug(f"event={event.type}")
             assert isinstance(event.index, int) and 0 <= event.index < len(groups)
             if connect:
                 group = groups[event.index]
@@ -338,8 +354,10 @@ class QGroupTreeModel(QAbstractItemModel):
                 self._disconnect_group_events(group)
             self.beginRemoveRows(get_parent_index(), event.index, event.index)
         elif event.type == "removed":
+            logger.debug(f"event={event.type}")
             self.endRemoveRows()
         elif event.type == "moving":
+            logger.debug(f"event={event.type}")
             assert isinstance(event.index, int) and 0 <= event.index < len(groups)
             assert (
                 isinstance(event.new_index, int)
@@ -351,8 +369,10 @@ class QGroupTreeModel(QAbstractItemModel):
                 parent_index, event.index, event.index, parent_index, event.new_index
             )
         elif event.type == "moved":
+            logger.debug(f"event={event.type}")
             self.endMoveRows()
         elif event.type == "changed" and isinstance(event.index, int):
+            logger.debug(f"event={event.type}")
             assert 0 <= event.index < len(groups)
             if connect:
                 old_group = event.old_value
@@ -367,6 +387,7 @@ class QGroupTreeModel(QAbstractItemModel):
             )
             self.dataChanged.emit(left_index, right_index)
         elif event.type == "changed":
+            logger.debug(f"event={event.type}")
             if connect:
                 old_groups = event.old_value
                 assert isinstance(old_groups, List)
@@ -384,6 +405,7 @@ class QGroupTreeModel(QAbstractItemModel):
             )
             self.dataChanged.emit(top_left_index, bottom_right_index)
         elif event.type == "reordered":
+            logger.debug(f"event={event.type}")
             top_left_index = self.createIndex(0, 0, object=groups[0])
             bottom_right_index = self.createIndex(
                 len(groups) - 1, len(self.COLUMNS) - 1, object=groups[-1]
@@ -401,6 +423,7 @@ class QGroupTreeModel(QAbstractItemModel):
         elif source_event.type == "visible":
             column = self.COLUMNS.VISIBLE
         if column is not None:
+            logger.debug(f"event={event.type}")
             group = source_event.source
             assert isinstance(group, Group)
             index = self.create_group_index(group, column=column)

@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Union
 
 from napari.utils.events import Event
@@ -15,6 +16,8 @@ from qtpy.QtWidgets import (
 from .._controller import controller
 from ..model import Array
 from ._flat_groupings_tab_widget import QFlatGroupingsTabWidget
+
+logger = logging.getLogger(__name__)
 
 
 # TODO styling (buttons)
@@ -58,8 +61,8 @@ class QArraysWidget(QWidget):
         self._flat_groupings_tab_widget = QFlatGroupingsTabWidget(controller)
         self._init_layout()
         self._connect_events()
-        self._check_new_array_push_buttons_enabled()
-        self._check_delete_array_push_button_enabled()
+        self._update_new_array_push_buttons_enabled()
+        self._update_delete_array_push_button_enabled()
 
     def __del__(self) -> None:
         self._disconnect_events()
@@ -83,12 +86,15 @@ class QArraysWidget(QWidget):
         )
 
     def _on_selected_groups_event(self, event: Event) -> None:
-        self._check_new_array_push_buttons_enabled()
+        logger.debug(f"event={event.type}")
+        self._update_new_array_push_buttons_enabled()
 
     def _on_current_arrays_selection_changed_event(self, event: Event) -> None:
-        self._check_delete_array_push_button_enabled()
+        logger.debug(f"event={event.type}")
+        self._update_delete_array_push_button_enabled()
 
     def _on_new_points_array_push_button_clicked(self, checked: bool = False) -> None:
+        logger.debug(f"checked={checked}")
         assert controller.viewer is not None
         assert len(controller.selected_groups) == 1
         group = controller.selected_groups[0]
@@ -97,6 +103,7 @@ class QArraysWidget(QWidget):
         group.arrays.append(array)
 
     def _on_new_shapes_array_push_button_clicked(self, checked: bool = False) -> None:
+        logger.debug(f"checked={checked}")
         assert controller.viewer is not None
         assert len(controller.selected_groups) == 1
         group = controller.selected_groups[0]
@@ -105,6 +112,7 @@ class QArraysWidget(QWidget):
         group.arrays.append(array)
 
     def _on_new_labels_array_push_button_clicked(self, checked: bool = False) -> None:
+        logger.debug(f"checked={checked}")
         assert controller.viewer is not None
         assert len(controller.selected_groups) == 1
         group = controller.selected_groups[0]
@@ -113,23 +121,20 @@ class QArraysWidget(QWidget):
         group.arrays.append(array)
 
     def _on_delete_array_push_button_clicked(self, checked: bool = False) -> None:
+        logger.debug(f"checked={checked}")
         arrays = list(controller.current_arrays.selection)
         controller.current_arrays.selection.clear()
         for array in arrays:
             array.parent.arrays.remove(array)
 
-    def _check_new_array_push_buttons_enabled(self) -> None:
-        self._new_points_array_push_button.setEnabled(
-            len(controller.selected_groups) == 1
-        )
-        self._new_shapes_array_push_button.setEnabled(
-            len(controller.selected_groups) == 1
-        )
-        self._new_labels_array_push_button.setEnabled(
-            len(controller.selected_groups) == 1
-        )
+    def _update_new_array_push_buttons_enabled(self) -> None:
+        enabled = len(controller.selected_groups) == 1
+        logger.debug(f"enabled={enabled}")
+        self._new_points_array_push_button.setEnabled(enabled)
+        self._new_shapes_array_push_button.setEnabled(enabled)
+        self._new_labels_array_push_button.setEnabled(enabled)
 
-    def _check_delete_array_push_button_enabled(self) -> None:
-        self._delete_array_push_button.setEnabled(
-            len(controller.current_arrays.selection) > 0
-        )
+    def _update_delete_array_push_button_enabled(self) -> None:
+        enabled = len(controller.current_arrays.selection) > 0
+        logger.debug(f"enabled={enabled}")
+        self._delete_array_push_button.setEnabled(enabled)
