@@ -89,6 +89,7 @@ class NestedParentAwareEventedModelList(ParentAwareEventedList[_NPAEMT, _PAT]):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.events.connect(self._on_event)
+        self.dirty = False
 
     def _on_event(self, event: Event) -> None:
         if self.parent is not None:
@@ -97,6 +98,7 @@ class NestedParentAwareEventedModelList(ParentAwareEventedList[_NPAEMT, _PAT]):
     def insert(self, index: int, value: _PAT) -> None:
         value.set_parent(self.parent)
         super().insert(index, value)
+        self.dirty = True
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -126,6 +128,7 @@ class NestedParentAwareEventedModelList(ParentAwareEventedList[_NPAEMT, _PAT]):
             for old_item in old_value:
                 assert isinstance(old_item, ParentAware)
                 old_item.set_parent(None)
+        self.dirty = True
 
     def __delitem__(self, key: Union[int, slice]) -> None:
         old_value = self[key]
@@ -138,6 +141,7 @@ class NestedParentAwareEventedModelList(ParentAwareEventedList[_NPAEMT, _PAT]):
             for old_item in old_value:
                 assert isinstance(old_item, ParentAware)
                 old_item.set_parent(None)
+        self.dirty = True
 
     def set_parent(self, value: Optional[_NPAEMT]) -> None:
         super().set_parent(value)

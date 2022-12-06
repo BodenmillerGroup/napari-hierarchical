@@ -101,6 +101,14 @@ class Group(NestedParentAwareEventedModel["Group"]):
             return True
         return None
 
+    @property
+    def dirty(self) -> bool:
+        return (
+            self.arrays.dirty
+            or self.children.dirty
+            or any(child.dirty for child in self.children)
+        )
+
 
 class Array(ParentAwareEventedModel[Group]):
     # avoid parameterized generics in type annotations for pydantic

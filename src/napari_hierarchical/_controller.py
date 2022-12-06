@@ -73,12 +73,12 @@ class HierarchicalController:
         return self._get_group_writer_function(path, group) is not None
 
     def can_load_group(self, group: Group) -> bool:
-        return all(
+        return not group.dirty and all(
             self.can_load_array(array) for array in group.iter_arrays(recursive=True)
         )
 
     def can_save_group(self, group: Group) -> bool:
-        return all(
+        return not group.dirty and all(
             self.can_save_array(array) for array in group.iter_arrays(recursive=True)
         )
 
