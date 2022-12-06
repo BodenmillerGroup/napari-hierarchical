@@ -280,7 +280,7 @@ class QGroupTreeModel(QAbstractItemModel):
         #     and column == -1
         #     and parent.isValid()
         # ):
-        #     pass  # TODO drop array onto group
+        #     pass
         return False
 
     def removeRows(
