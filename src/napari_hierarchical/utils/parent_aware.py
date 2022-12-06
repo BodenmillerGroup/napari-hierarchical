@@ -147,3 +147,6 @@ class NestedParentAwareEventedModelList(ParentAwareEventedList[_NPAEMT, _PAT]):
         super().set_parent(value)
         for item in self:
             item.set_parent(value)
+
+    def commit(self) -> None:
+        self.dirty = False

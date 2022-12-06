@@ -40,6 +40,7 @@ def _create_group(
             group.arrays.append(array)
         else:
             raise NotImplementedError()
+    group.commit()
     return group
 
 

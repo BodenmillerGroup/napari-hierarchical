@@ -23,10 +23,12 @@ def read_zarr(path: PathLike) -> Group:
         group = Group(name=Path(path).name)
         array = _create_array(str(path), [], z)
         group.arrays.append(array)
-        return group
-    if isinstance(z, zarr.Group):
-        return _create_group(str(path), [], z, name=Path(path).name)
-    raise TypeError(f"Unsupported Zarr type: {type(z)}")
+    elif isinstance(z, zarr.Group):
+        group = _create_group(str(path), [], z, name=Path(path).name)
+    else:
+        raise TypeError(f"Unsupported Zarr type: {type(z)}")
+    group.commit()
+    return group
 
 
 def _create_group(

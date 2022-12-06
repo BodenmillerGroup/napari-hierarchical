@@ -49,6 +49,12 @@ class Group(NestedParentAwareEventedModel["Group"]):
             if array.loaded:
                 array.hide()
 
+    def commit(self) -> None:
+        self.arrays.commit()
+        self.children.commit()
+        for child in self.children:
+            child.commit()
+
     def iter_arrays(self, recursive: bool = False) -> Generator["Array", None, None]:
         yield from self.arrays
         if recursive:

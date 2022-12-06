@@ -18,7 +18,7 @@ PathLike = Union[str, os.PathLike]
 
 
 def read_imc(path: PathLike) -> Group:
-    imc_group = Group(name=Path(path).name)
+    group = Group(name=Path(path).name)
     with MCDFile(path) as f:
         for slide in f.slides:
             slide_group = Group(name=f"[S{slide.id:02d}] {slide.description}")
@@ -28,7 +28,7 @@ def read_imc(path: PathLike) -> Group:
                     name=f"[P{panorama.id:02d}] {panorama.description}"
                 )
                 panorama_array = IMCPanoramaArray(
-                    name=f"{imc_group.name} [S{slide.id:02d} P{panorama.id:02d}]",
+                    name=f"{group.name} [S{slide.id:02d} P{panorama.id:02d}]",
                     mcd_file=str(path),
                     slide_id=slide.id,
                     panorama_id=panorama.id,
@@ -45,7 +45,7 @@ def read_imc(path: PathLike) -> Group:
                     zip(acquisition.channel_names, acquisition.channel_labels)
                 ):
                     acquisition_array = IMCAcquisitionArray(
-                        name=f"{imc_group.name} "
+                        name=f"{group.name} "
                         f"[S{slide.id:02d} A{acquisition.id:02d} C{channel_index:02d}]",
                         mcd_file=str(path),
                         slide_id=slide.id,
@@ -58,8 +58,9 @@ def read_imc(path: PathLike) -> Group:
                     acquisition_group.arrays.append(acquisition_array)
                 acquisitions_group.children.append(acquisition_group)
             slide_group.children.append(acquisitions_group)
-            imc_group.children.append(slide_group)
-    return imc_group
+            group.children.append(slide_group)
+    group.commit()
+    return group
 
 
 def load_imc_panorama(array: Array) -> None:
