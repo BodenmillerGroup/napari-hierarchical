@@ -4,9 +4,11 @@ from typing import Optional, Union
 
 from pluggy import HookimplMarker
 
-from napari_hierarchical.hookspecs import GroupReaderFunction
+from napari_hierarchical.hookspecs import GroupReaderFunction, GroupWriterFunction
+from napari_hierarchical.model import Group
 
 from ._reader import read_zarr
+from ._writer import write_zarr
 
 try:
     import zarr
@@ -29,7 +31,19 @@ def napari_hierarchical_get_group_reader(
     return None
 
 
-# TODO Zarr writer
+@hookimpl
+def napari_hierarchical_get_group_writer(
+    path: PathLike, group: Group
+) -> Optional[GroupWriterFunction]:
+    if available and Path(path).suffix.lower() == ".zarr":
+        return write_zarr
+    return None
 
 
-__all__ = ["available", "read_zarr", "napari_hierarchical_get_group_reader"]
+__all__ = [
+    "available",
+    "read_zarr",
+    "write_zarr",
+    "napari_hierarchical_get_group_reader",
+    "napari_hierarchical_get_group_writer",
+]

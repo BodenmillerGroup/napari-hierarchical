@@ -6,6 +6,6 @@ from napari_hierarchical.model import Group
 PathLike = Union[str, os.PathLike]
 
 
-def read_netcdf4(path: PathLike) -> Group:
-    # TODO netCDF4 reader
+def write_hdf5(path: PathLike, group: Group) -> None:
+    # TODO HDF5 writer
     raise NotImplementedError()
