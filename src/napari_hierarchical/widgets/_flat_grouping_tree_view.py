@@ -2,7 +2,7 @@ import logging
 from typing import Callable, Optional, Set
 
 from napari.utils.events import Event
-from qtpy.QtCore import QItemSelection, QSortFilterProxyModel, Qt
+from qtpy.QtCore import QItemSelection, QSortFilterProxyModel
 from qtpy.QtWidgets import QHeaderView, QTreeView, QWidget
 
 from .._controller import HierarchicalController
@@ -47,9 +47,9 @@ class QFlatGroupingTreeView(QTreeView):
         )
         self.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)
         self.setSelectionBehavior(QTreeView.SelectionBehavior.SelectRows)
-        self.setDragDropMode(QTreeView.DragDropMode.DragDrop)
-        self.setDefaultDropAction(Qt.DropAction.MoveAction)
-        self.setDropIndicatorShown(True)
+        # self.setDragDropMode(QTreeView.DragDropMode.DragDrop)
+        # self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        # self.setDropIndicatorShown(True)
         self.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self._connect_events()
 

@@ -273,14 +273,14 @@ class QGroupTreeModel(QAbstractItemModel):
                     self._dropping = False
                 row_offset += 1
             return True
-        if (
-            data.hasFormat("x-napari-hierarchical-array")
-            and action == Qt.DropAction.MoveAction
-            and row == -1
-            and column == -1
-            and parent.isValid()
-        ):
-            pass  # TODO drop array onto group
+        # if (
+        #     data.hasFormat("x-napari-hierarchical-array")
+        #     and action == Qt.DropAction.MoveAction
+        #     and row == -1
+        #     and column == -1
+        #     and parent.isValid()
+        # ):
+        #     pass  # TODO drop array onto group
         return False
 
     def removeRows(

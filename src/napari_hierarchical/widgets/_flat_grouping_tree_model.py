@@ -1,13 +1,12 @@
 import logging
-import pickle
 from enum import IntEnum
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence
 
 from napari.utils.events import Event, EventedDict, EventedList
-from qtpy.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QObject, Qt
+from qtpy.QtCore import QAbstractItemModel, QModelIndex, QObject, Qt
 
 from .._controller import HierarchicalController
-from ..model import Array, Group
+from ..model import Array
 from ..utils.parent_aware import ParentAware
 
 logger = logging.getLogger(__name__)
@@ -136,7 +135,8 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             if isinstance(array_or_arrays, Array):
                 array = array_or_arrays
                 if index.column() == self.COLUMNS.NAME:
-                    if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
+                    # if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole)
+                    if role == Qt.ItemDataRole.DisplayRole:
                         return array.name
                 elif index.column() == self.COLUMNS.LOADED:
                     if role == Qt.ItemDataRole.CheckStateRole:
@@ -153,7 +153,8 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             else:
                 arrays = array_or_arrays
                 if index.column() == self.COLUMNS.NAME:
-                    if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
+                    # if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole)
+                    if role == Qt.ItemDataRole.DisplayRole:
                         return arrays.flat_group
                 elif index.column() == self.COLUMNS.LOADED:
                     if role == Qt.ItemDataRole.CheckStateRole:
@@ -185,12 +186,12 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             logger.debug(f"array_or_arrays={array_or_arrays}, value={value}")
             if isinstance(array_or_arrays, Array):
                 array = array_or_arrays
-                if index.column() == self.COLUMNS.NAME:
-                    if role == Qt.ItemDataRole.EditRole:
-                        assert isinstance(value, str)
-                        array.name = value
-                        return True
-                elif index.column() == self.COLUMNS.LOADED:
+                # if index.column() == self.COLUMNS.NAME:
+                #     if role == Qt.ItemDataRole.EditRole:
+                #         assert isinstance(value, str)
+                #         array.name = value
+                #         return True
+                if index.column() == self.COLUMNS.LOADED:
                     if role == Qt.ItemDataRole.CheckStateRole:
                         assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
                         if value == Qt.CheckState.Checked:
@@ -210,14 +211,14 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                     raise NotImplementedError()
             else:
                 arrays = array_or_arrays
-                if index.column() == self.COLUMNS.NAME:
-                    if role == Qt.ItemDataRole.EditRole:
-                        assert isinstance(value, str)
-                        if value not in self._flat_groups:
-                            for array in arrays:
-                                self._set_flat_group(array, value)
-                            return True
-                elif index.column() == self.COLUMNS.LOADED:
+                # if index.column() == self.COLUMNS.NAME:
+                #     if role == Qt.ItemDataRole.EditRole:
+                #         assert isinstance(value, str)
+                #         if value not in self._flat_groups:
+                #             for array in arrays:
+                #                 self._set_flat_group(array, value)
+                #             return True
+                if index.column() == self.COLUMNS.LOADED:
                     if role == Qt.ItemDataRole.CheckStateRole:
                         assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
                         if value == Qt.CheckState.Checked:
@@ -253,11 +254,11 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                     flags = (
                         Qt.ItemFlag.ItemIsEnabled
                         | Qt.ItemFlag.ItemIsSelectable
-                        | Qt.ItemFlag.ItemIsEditable
+                        # | Qt.ItemFlag.ItemIsEditable
                         | Qt.ItemFlag.ItemNeverHasChildren
                     )
-                    if array.loaded:
-                        flags |= Qt.ItemFlag.ItemIsDragEnabled
+                    # if array.loaded:
+                    #     flags |= Qt.ItemFlag.ItemIsDragEnabled
                     return flags
                 if index.column() == self.COLUMNS.LOADED:
                     flags = (
@@ -267,8 +268,8 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                     )
                     if array.loaded or self._controller.can_load_array(array):
                         flags |= Qt.ItemFlag.ItemIsEnabled
-                    if array.loaded:
-                        flags |= Qt.ItemFlag.ItemIsDragEnabled
+                    # if array.loaded:
+                    #     flags |= Qt.ItemFlag.ItemIsDragEnabled
                     return flags
                 if index.column() == self.COLUMNS.VISIBLE:
                     flags = (
@@ -278,7 +279,8 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                     )
                     if array.loaded:
                         flags |= Qt.ItemFlag.ItemIsEnabled
-                        flags |= Qt.ItemFlag.ItemIsDragEnabled
+                    # if array.loaded:
+                    #     flags |= Qt.ItemFlag.ItemIsDragEnabled
                     return flags
             else:
                 arrays = array_or_arrays
@@ -286,11 +288,11 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                     flags = (
                         Qt.ItemFlag.ItemIsEnabled
                         | Qt.ItemFlag.ItemIsSelectable
-                        | Qt.ItemFlag.ItemIsEditable
+                        # | Qt.ItemFlag.ItemIsEditable
                     )
+                    # if self._flat_grouping is not None:
+                    #     flags |= Qt.ItemFlag.ItemIsDropEnabled
                     if self._flat_grouping is not None:
-                        flags |= Qt.ItemFlag.ItemIsDropEnabled
-                    else:
                         flags |= Qt.ItemFlag.ItemNeverHasChildren
                     return flags
                 if index.column() == self.COLUMNS.LOADED:
@@ -303,9 +305,9 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                     )
                     if n_loaded_or_loadable == len(arrays):
                         flags |= Qt.ItemFlag.ItemIsEnabled
+                    # if self._flat_grouping is not None:
+                    #     flags |= Qt.ItemFlag.ItemIsDropEnabled
                     if self._flat_grouping is not None:
-                        flags |= Qt.ItemFlag.ItemIsDropEnabled
-                    else:
                         flags |= Qt.ItemFlag.ItemNeverHasChildren
                     return flags
                 if index.column() == self.COLUMNS.VISIBLE:
@@ -315,9 +317,9 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                     n_loaded = sum(array.loaded for array in arrays)
                     if n_loaded > 0:
                         flags |= Qt.ItemFlag.ItemIsEnabled
+                    # if self._flat_grouping is not None:
+                    #     flags |= Qt.ItemFlag.ItemIsDropEnabled
                     if self._flat_grouping is not None:
-                        flags |= Qt.ItemFlag.ItemIsDropEnabled
-                    else:
                         flags |= Qt.ItemFlag.ItemNeverHasChildren
                     return flags
         return super().flags(index)
@@ -342,91 +344,91 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                 return "V"
         return None
 
-    def supportedDropActions(self) -> Qt.DropActions:
-        return Qt.DropAction.MoveAction
+    # def supportedDropActions(self) -> Qt.DropActions:
+    #     return Qt.DropAction.MoveAction
 
-    def mimeTypes(self) -> List[str]:
-        mime_types = super().mimeTypes()
-        mime_types.append("x-napari-hierarchical-array")
-        return mime_types
+    # def mimeTypes(self) -> List[str]:
+    #     mime_types = super().mimeTypes()
+    #     mime_types.append("x-napari-hierarchical-array")
+    #     return mime_types
 
-    def mimeData(self, indexes: Iterable[QModelIndex]) -> QMimeData:
-        data = super().mimeData(indexes)
-        indices_stacks = []
-        for index in indexes:
-            if index.column() == 0:
-                array = index.internalPointer()
-                assert isinstance(array, Array)
-                group = array.parent
-                assert isinstance(group, Group)
-                indices_stack = [group.arrays.index(array)]
-                while group.parent is not None:
-                    indices_stack.append(group.parent.children.index(group))
-                    group = group.parent
-                indices_stack.append(self._controller.groups.index(group))
-                indices_stacks.append(indices_stack)
-        data.setData("x-napari-hierarchical-array", pickle.dumps(indices_stacks))
-        return data
+    # def mimeData(self, indexes: Iterable[QModelIndex]) -> QMimeData:
+    #     data = super().mimeData(indexes)
+    #     indices_stacks = []
+    #     for index in indexes:
+    #         if index.column() == 0:
+    #             array = index.internalPointer()
+    #             assert isinstance(array, Array)
+    #             group = array.parent
+    #             assert isinstance(group, Group)
+    #             indices_stack = [group.arrays.index(array)]
+    #             while group.parent is not None:
+    #                 indices_stack.append(group.parent.children.index(group))
+    #                 group = group.parent
+    #             indices_stack.append(self._controller.groups.index(group))
+    #             indices_stacks.append(indices_stack)
+    #     data.setData("x-napari-hierarchical-array", pickle.dumps(indices_stacks))
+    #     return data
 
-    def dropMimeData(
-        self,
-        data: QMimeData,
-        action: Qt.DropAction,
-        row: int,
-        column: int,
-        parent: QModelIndex,
-    ) -> bool:
-        if (
-            data.hasFormat("x-napari-hierarchical-array")
-            and action == Qt.DropAction.MoveAction
-        ):
-            assert row == -1
-            assert column == -1
-            assert parent.isValid()
-            target_arrays = parent.internalPointer()
-            assert isinstance(target_arrays, Arrays)
-            indices_stacks = pickle.loads(
-                data.data("x-napari-hierarchical-array").data()
-            )
-            assert isinstance(indices_stacks, List) and len(indices_stacks) > 0
-            while len(indices_stacks) > 0:
-                indices_stack = indices_stacks.pop(0)
-                assert isinstance(indices_stack, List) and len(indices_stack) > 1
-                source_groups = self._controller.groups
-                source_row = indices_stack.pop()
-                assert isinstance(source_row, int)
-                while len(indices_stack) > 1:
-                    source_groups = source_groups[source_row].children
-                    source_row = indices_stack.pop()
-                    assert isinstance(source_row, int)
-                group = source_groups[source_row]
-                array = group.arrays[indices_stack.pop()]
-                logger.debug(f"target_arrays={target_arrays}, array={array}")
-                self._dropping = True
-                try:
-                    new_array = Array.from_array(array)
-                    self._set_flat_group(new_array, target_arrays.flat_group)
-                    group.arrays.append(new_array)
-                finally:
-                    self._dropping = False
-            return True
-        return False
+    # def dropMimeData(
+    #     self,
+    #     data: QMimeData,
+    #     action: Qt.DropAction,
+    #     row: int,
+    #     column: int,
+    #     parent: QModelIndex,
+    # ) -> bool:
+    #     if (
+    #         data.hasFormat("x-napari-hierarchical-array")
+    #         and action == Qt.DropAction.MoveAction
+    #     ):
+    #         assert row == -1
+    #         assert column == -1
+    #         assert parent.isValid()
+    #         target_arrays = parent.internalPointer()
+    #         assert isinstance(target_arrays, Arrays)
+    #         indices_stacks = pickle.loads(
+    #             data.data("x-napari-hierarchical-array").data()
+    #         )
+    #         assert isinstance(indices_stacks, List) and len(indices_stacks) > 0
+    #         while len(indices_stacks) > 0:
+    #             indices_stack = indices_stacks.pop(0)
+    #             assert isinstance(indices_stack, List) and len(indices_stack) > 1
+    #             source_groups = self._controller.groups
+    #             source_row = indices_stack.pop()
+    #             assert isinstance(source_row, int)
+    #             while len(indices_stack) > 1:
+    #                 source_groups = source_groups[source_row].children
+    #                 source_row = indices_stack.pop()
+    #                 assert isinstance(source_row, int)
+    #             group = source_groups[source_row]
+    #             array = group.arrays[indices_stack.pop()]
+    #             logger.debug(f"target_arrays={target_arrays}, array={array}")
+    #             self._dropping = True
+    #             try:
+    #                 new_array = Array.from_array(array)
+    #                 self._set_flat_group(new_array, target_arrays.flat_group)
+    #                 group.arrays.append(new_array)
+    #             finally:
+    #                 self._dropping = False
+    #         return True
+    #     return False
 
-    def removeRows(
-        self, row: int, count: int, parent: QModelIndex = QModelIndex()
-    ) -> bool:
-        if parent.isValid():
-            arrays = parent.internalPointer()
-            assert isinstance(arrays, Arrays)
-            if 0 <= row < row + count <= len(arrays):
-                arrays_copy = [arrays[i] for i in range(row, row + count)]
-                for array in arrays_copy:
-                    group = array.parent
-                    assert group is not None
-                    logger.debug(f"arrays={group.arrays}, array={array}")
-                    group.arrays.remove(array)
-                return True
-        return False
+    # def removeRows(
+    #     self, row: int, count: int, parent: QModelIndex = QModelIndex()
+    # ) -> bool:
+    #     if parent.isValid():
+    #         arrays = parent.internalPointer()
+    #         assert isinstance(arrays, Arrays)
+    #         if 0 <= row < row + count <= len(arrays):
+    #             arrays_copy = [arrays[i] for i in range(row, row + count)]
+    #             for array in arrays_copy:
+    #                 group = array.parent
+    #                 assert group is not None
+    #                 logger.debug(f"arrays={group.arrays}, array={array}")
+    #                 group.arrays.remove(array)
+    #             return True
+    #     return False
 
     def create_array_index(self, array: Array, column: int = 0) -> QModelIndex:
         flat_group = self._get_flat_group(array)
@@ -644,12 +646,12 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             return array.flat_grouping_groups[self._flat_grouping]
         return array.name
 
-    def _set_flat_group(self, array: Array, value: str) -> None:
-        logger.debug(f"array={array}, value={value}")
-        if self._flat_grouping is not None:
-            array.flat_grouping_groups[self._flat_grouping] = value
-        else:
-            array.name = value
+    # def _set_flat_group(self, array: Array, value: str) -> None:
+    #     logger.debug(f"array={array}, value={value}")
+    #     if self._flat_grouping is not None:
+    #         array.flat_grouping_groups[self._flat_grouping] = value
+    #     else:
+    #         array.name = value
 
     def _close_if_empty(self) -> None:
         if len(self._flat_groups) == 0 and self._close_callback is not None:
