@@ -12,7 +12,6 @@ from ._flat_grouping_tree_model import Arrays, QFlatGroupingTreeModel
 logger = logging.getLogger(__name__)
 
 
-# TODO styling (checkboxes)
 class QFlatGroupingTreeView(QTreeView):
     def __init__(
         self,

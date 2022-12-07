@@ -27,7 +27,6 @@ def _get_group_level(group: Group, current_level: int = 0) -> int:
     return current_level
 
 
-# TODO styling (buttons)
 class QGroupsWidget(QWidget):
     def __init__(
         self,

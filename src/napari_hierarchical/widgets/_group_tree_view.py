@@ -12,7 +12,6 @@ from ._group_tree_model import QGroupTreeModel
 logger = logging.getLogger(__name__)
 
 
-# TODO styling (checkboxes)
 class QGroupTreeView(QTreeView):
     def __init__(
         self, controller: HierarchicalController, parent: Optional[QWidget] = None

@@ -20,7 +20,6 @@ from ._flat_groupings_tab_widget import QFlatGroupingsTabWidget
 logger = logging.getLogger(__name__)
 
 
-# TODO styling (buttons)
 class QArraysWidget(QWidget):
     def __init__(
         self,
