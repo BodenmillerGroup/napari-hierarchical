@@ -110,6 +110,7 @@ class HierarchicalController:
             raise HierarchicalControllerException(f"No group writer found for {path}")
         try:
             group_writer_function(path, group)
+            # TODO re-read & replace group
         except Exception as e:
             raise HierarchicalControllerException(e)
 

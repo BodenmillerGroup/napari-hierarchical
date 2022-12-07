@@ -4,9 +4,7 @@ from typing import Optional, Sequence, Union
 
 from napari.layers import Image
 
-from napari_hierarchical.model import Group
-
-from .model import ZarrArray
+from napari_hierarchical.model import Array, Group
 
 try:
     import dask.array as da
@@ -50,21 +48,12 @@ def _create_group(
 
 
 def _create_array(
-    zarr_file: str,
-    zarr_names: Sequence[str],
-    zarr_array: "zarr.Array",
-    name: Optional[str] = None,
-) -> ZarrArray:
+    zarr_file: str, zarr_names: Sequence[str], zarr_array: "zarr.Array"
+) -> Array:
     zarr_path = "/".join(zarr_names)
-    if name is None:
-        name = f"{Path(zarr_file).name} [/{zarr_path}]"
+    name = f"{Path(zarr_file).name} [/{zarr_path}]"
     layer = Image(name=name, data=da.from_zarr(zarr_array))
-    array = ZarrArray(
-        name=name,
-        loaded_layer=layer,
-        zarr_file=zarr_file,
-        zarr_path=zarr_path,
-    )
+    array = Array(name=name, loaded_layer=layer)
     if len(zarr_names) > 0:
         array.flat_grouping_groups["Path"] = (
             "/*" * (len(zarr_names) - 1) + "/" + zarr_names[-1]

@@ -4,9 +4,7 @@ from typing import Optional, Sequence, Union
 
 from napari.layers import Image
 
-from napari_hierarchical.model import Group
-
-from .model import HDF5Array
+from napari_hierarchical.model import Array, Group
 
 try:
     import dask.array as da
@@ -19,7 +17,9 @@ PathLike = Union[str, os.PathLike]
 
 def read_hdf5(path: PathLike) -> Group:
     with h5py.File(path) as f:
-        return _create_group(str(path), [], f, name=Path(path).name)
+        group = _create_group(str(path), [], f, name=Path(path).name)
+    group.commit()
+    return group
 
 
 def _create_group(
@@ -40,23 +40,16 @@ def _create_group(
             group.arrays.append(array)
         else:
             raise NotImplementedError()
-    group.commit()
     return group
 
 
 def _create_array(
-    hdf5_file: str,
-    hdf5_names: Sequence[str],
-    hdf5_dataset: "h5py.Dataset",
-    name: Optional[str] = None,
-) -> HDF5Array:
+    hdf5_file: str, hdf5_names: Sequence[str], hdf5_dataset: "h5py.Dataset"
+) -> Array:
     hdf5_path = "/".join(hdf5_names)
-    if name is None:
-        name = f"{Path(hdf5_file).name} [/{hdf5_path}]"
+    name = f"{Path(hdf5_file).name} [/{hdf5_path}]"
     layer = Image(name=name, data=da.from_array(hdf5_dataset))
-    array = HDF5Array(
-        name=name, loaded_layer=layer, hdf5_file=hdf5_file, hdf5_path=hdf5_path
-    )
+    array = Array(name=name, loaded_layer=layer)
     if len(hdf5_names) > 0:
         array.flat_grouping_groups["Path"] = (
             "/*" * (len(hdf5_names) - 1) + "/" + hdf5_names[-1]

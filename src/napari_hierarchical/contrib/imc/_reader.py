@@ -10,6 +10,7 @@ from napari_hierarchical.model import Array, Group
 from .model import IMCAcquisitionArray, IMCPanoramaArray
 
 try:
+    import dask.array as da
     from readimc import MCDFile
 except ModuleNotFoundError:
     pass
@@ -71,7 +72,7 @@ def load_imc_panorama(array: Array) -> None:
         panorama = next(
             panorama for panorama in slide.panoramas if panorama.id == array.panorama_id
         )
-        data = f.read_panorama(panorama)[::-1, :]
+        data = da.from_array(f.read_panorama(panorama)[::-1, :])
         scale = (
             panorama.height_um / data.shape[0],
             panorama.width_um / data.shape[1],
@@ -92,7 +93,6 @@ def load_imc_panorama(array: Array) -> None:
 def load_imc_acquisition(array: Array) -> None:
     if not isinstance(array, IMCAcquisitionArray):
         raise TypeError(f"Not an IMC acquisition array: {array}")
-    # TODO read acquisition from TXT if reading from MCD fails
     with MCDFile(array.mcd_file) as f:
         slide = next(slide for slide in f.slides if slide.id == array.slide_id)
         acquisition = next(
@@ -100,7 +100,9 @@ def load_imc_acquisition(array: Array) -> None:
             for acquisition in slide.acquisitions
             if acquisition.id == array.acquisition_id
         )
-        data = f.read_acquisition(acquisition)[array.channel_index, ::-1, :]
+        data = da.from_array(
+            f.read_acquisition(acquisition)[array.channel_index, ::-1, :]
+        )
         scale = (
             acquisition.height_um / data.shape[0],
             acquisition.width_um / data.shape[1],

@@ -9,14 +9,12 @@ from ._controller import (
     controller,
 )
 from ._reader import napari_get_reader
-from .contrib import hdf5, imc, netcdf4, zarr
+from .contrib import hdf5, imc, zarr
 
 if hdf5.available:
     controller.pm.register(hdf5, name="napari-hierarchical-hdf5")
 if imc.available:
     controller.pm.register(imc, name="napari-hierarchical-imc")
-if netcdf4.available:
-    controller.pm.register(netcdf4, name="napari-hierarchical-netcdf4")
 if zarr.available:
     controller.pm.register(zarr, name="napari-hierarchical-zarr")
 
