@@ -70,7 +70,10 @@ class HierarchicalController:
         return self._get_group_reader_function(path) is not None
 
     def can_write_group(self, path: PathLike, group: Group) -> bool:
-        return self._get_group_writer_function(path, group) is not None
+        return (
+            self._get_group_reader_function(path) is not None
+            and self._get_group_writer_function(path, group) is not None
+        )
 
     def can_load_group(self, group: Group) -> bool:
         return not group.dirty and all(
@@ -105,14 +108,19 @@ class HierarchicalController:
 
     def write_group(self, path: PathLike, group: Group) -> None:
         logger.debug(f"path={path}, group={group}")
+        group_reader_function = self._get_group_reader_function(path)
+        if group_reader_function is None:
+            raise HierarchicalControllerException(f"No group reader found for {path}")
         group_writer_function = self._get_group_writer_function(path, group)
         if group_writer_function is None:
             raise HierarchicalControllerException(f"No group writer found for {path}")
+        index = self._groups.index(group)
         try:
             group_writer_function(path, group)
-            # TODO re-read & replace group
+            new_group = group_reader_function(path)
         except Exception as e:
             raise HierarchicalControllerException(e)
+        self._groups[index] = new_group
 
     def load_group(self, group: Group) -> None:
         logger.debug(f"group={group}")
