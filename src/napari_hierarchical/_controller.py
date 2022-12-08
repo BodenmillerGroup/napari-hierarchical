@@ -104,10 +104,14 @@ class HierarchicalController:
         self._groups[index] = new_group
 
     def can_load_group(self, group: Group) -> bool:
-        return not group.dirty and all(
-            self.can_load_array(array)
-            for array in group.iter_arrays(recursive=True)
-            if not array.loaded
+        return (
+            not group.dirty
+            and any(not array.loaded for array in group.iter_arrays(recursive=True))
+            and all(
+                self.can_load_array(array)
+                for array in group.iter_arrays(recursive=True)
+                if not array.loaded
+            )
         )
 
     def load_group(self, group: Group) -> None:
@@ -151,10 +155,14 @@ class HierarchicalController:
         array.layer = None
 
     def can_save_group(self, group: Group) -> bool:
-        return not group.dirty and all(
-            self.can_save_array(array)
-            for array in group.iter_arrays(recursive=True)
-            if array.loaded
+        return (
+            not group.dirty
+            and any(array.loaded for array in group.iter_arrays(recursive=True))
+            and all(
+                self.can_save_array(array)
+                for array in group.iter_arrays(recursive=True)
+                if array.loaded
+            )
         )
 
     def save_group(self, group: Group) -> None:

@@ -91,6 +91,7 @@ class Group(NestedParentAwareEventedModel["Group"]):
 
     @property
     def loaded(self) -> Optional[bool]:
+        # evaluate any before all to catch empty iterables!
         if not any(array.loaded for array in self.iter_arrays(recursive=True)):
             return False
         if all(array.loaded for array in self.iter_arrays(recursive=True)):
@@ -99,6 +100,7 @@ class Group(NestedParentAwareEventedModel["Group"]):
 
     @property
     def visible(self) -> Optional[bool]:
+        # evaluate any before all to catch empty iterables!
         if not any(
             array.visible for array in self.iter_arrays(recursive=True) if array.loaded
         ):

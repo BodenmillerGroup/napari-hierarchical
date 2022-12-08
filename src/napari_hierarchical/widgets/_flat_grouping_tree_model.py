@@ -158,6 +158,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                         return arrays.flat_group
                 elif index.column() == self.COLUMNS.LOADED:
                     if role == Qt.ItemDataRole.CheckStateRole:
+                        # evaluate any before all to catch empty iterables!
                         if not any(array.loaded for array in arrays):
                             return Qt.CheckState.Unchecked
                         if all(array.loaded for array in arrays):
@@ -165,6 +166,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                         return Qt.CheckState.PartiallyChecked
                 elif index.column() == self.COLUMNS.VISIBLE:
                     if role == Qt.ItemDataRole.CheckStateRole:
+                        # evaluate any before all to catch empty iterables!
                         if not any(array.visible for array in arrays if array.loaded):
                             return Qt.CheckState.Unchecked
                         if all(array.visible for array in arrays if array.loaded):
@@ -300,9 +302,8 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                         Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable
                     )
                     if all(
-                        self._controller.can_load_array(array)
+                        array.loaded or self._controller.can_load_array(array)
                         for array in arrays
-                        if not array.loaded
                     ):
                         flags |= Qt.ItemFlag.ItemIsEnabled
                     # if self._flat_grouping is not None:
@@ -616,7 +617,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
             self.dataChanged.emit(first_flat_group_index, last_flat_group_index)
 
     def _remove_array_from_flat_group(self, array: Array, flat_group: str) -> None:
-        if any(a for a in self._flat_group_arrays[flat_group] if a != array):
+        if any(a != array for a in self._flat_group_arrays[flat_group]):
             logger.debug(f"array={array}, flat_group={flat_group}")
             array_row = self._flat_group_arrays[flat_group].index(array)
             if self._flat_grouping is not None:

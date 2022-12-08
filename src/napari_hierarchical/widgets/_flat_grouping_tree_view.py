@@ -113,7 +113,8 @@ class QFlatGroupingTreeView(QTreeView):
                     menu = QMenu()
                     load_action = menu.addAction("Load")
                     load_action.setEnabled(
-                        all(
+                        any(not array.loaded for array in arrays)
+                        and all(
                             self._controller.can_load_array(array)
                             for array in arrays
                             if not array.loaded
@@ -123,7 +124,8 @@ class QFlatGroupingTreeView(QTreeView):
                     unload_action.setEnabled(any(array.loaded for array in arrays))
                     save_action = menu.addAction("Save")
                     save_action.setEnabled(
-                        all(
+                        any(array.loaded for array in arrays)
+                        and all(
                             self._controller.can_save_array(array)
                             for array in arrays
                             if array.loaded
