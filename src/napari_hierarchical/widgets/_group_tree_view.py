@@ -66,8 +66,10 @@ class QGroupTreeView(QTreeView):
             group = index.internalPointer()
             assert isinstance(group, Group)
             menu = QMenu()
-            save_as_action = menu.addAction("Save As...")
-            save_as_action.setEnabled(group.parent is None)
+            if group.parent is None:
+                save_as_action = menu.addAction("Save As...")
+            else:
+                save_as_action = None
             remove_action = menu.addAction("Remove")
             menu.addSeparator()
             load_arrays_action = menu.addAction("Load arrays")
@@ -89,7 +91,7 @@ class QGroupTreeView(QTreeView):
                 group.loaded in (None, True) and group.visible in (None, True)
             )
             result = menu.exec(self.mapToGlobal(pos))
-            if result == save_as_action:
+            if save_as_action is not None and result == save_as_action:
                 path, _ = QFileDialog.getSaveFileName()
                 if path:
                     self._controller.write_group(path, group)
