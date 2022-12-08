@@ -18,7 +18,7 @@ except ModuleNotFoundError:
 PathLike = Union[str, os.PathLike]
 
 
-def read_imc(path: PathLike) -> Group:
+def read_imc_group(path: PathLike) -> Group:
     group = Group(name=Path(path).name)
     with MCDFile(path) as f:
         for slide in f.slides:
@@ -64,7 +64,7 @@ def read_imc(path: PathLike) -> Group:
     return group
 
 
-def load_imc_panorama(array: Array) -> None:
+def load_imc_panorama_array(array: Array) -> None:
     if not isinstance(array, IMCPanoramaArray):
         raise TypeError(f"Not an IMC panorama array: {array}")
     with MCDFile(array.mcd_file) as f:
@@ -90,7 +90,7 @@ def load_imc_panorama(array: Array) -> None:
     )
 
 
-def load_imc_acquisition(array: Array) -> None:
+def load_imc_acquisition_array(array: Array) -> None:
     if not isinstance(array, IMCAcquisitionArray):
         raise TypeError(f"Not an IMC acquisition array: {array}")
     with MCDFile(array.mcd_file) as f:

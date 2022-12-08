@@ -86,10 +86,7 @@ class HierarchicalController:
         )
 
     def can_load_array(self, array: Array) -> bool:
-        return (
-            array.loaded_layer is not None
-            or self._get_array_loader_function(array) is not None
-        )
+        return self._get_array_loader_function(array) is not None
 
     def can_save_array(self, array: Array) -> bool:
         return self._get_array_saver_function(array) is not None
@@ -141,18 +138,15 @@ class HierarchicalController:
         assert self._viewer is not None
         if not array.loaded:
             logger.debug(f"group={array}")
-            if array.loaded_layer is not None:
-                array.layer = array.loaded_layer
-            else:
-                array_loader_function = self._get_array_loader_function(array)
-                if array_loader_function is None:
-                    raise HierarchicalControllerException(
-                        f"No array loader found for {array}"
-                    )
-                try:
-                    array_loader_function(array)
-                except Exception as e:
-                    raise HierarchicalControllerException(e)
+            array_loader_function = self._get_array_loader_function(array)
+            if array_loader_function is None:
+                raise HierarchicalControllerException(
+                    f"No array loader found for {array}"
+                )
+            try:
+                array_loader_function(array)
+            except Exception as e:
+                raise HierarchicalControllerException(e)
             assert array.layer is not None
             self._viewer.add_layer(array.layer)
 

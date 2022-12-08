@@ -101,7 +101,7 @@ class QArraysWidget(QWidget):
         assert len(controller.selected_groups) == 1
         group = controller.selected_groups[0]
         layer = controller.viewer.add_points()
-        array = Array(name=layer.name, layer=layer, loaded_layer=layer)
+        array = Array(name=layer.name, layer=layer)
         group.arrays.append(array)
 
     def _on_new_shapes_array_push_button_clicked(self, checked: bool = False) -> None:
@@ -110,7 +110,7 @@ class QArraysWidget(QWidget):
         assert len(controller.selected_groups) == 1
         group = controller.selected_groups[0]
         layer = controller.viewer.add_shapes()
-        array = Array(name=layer.name, layer=layer, loaded_layer=layer)
+        array = Array(name=layer.name, layer=layer)
         group.arrays.append(array)
 
     def _on_new_labels_array_push_button_clicked(self, checked: bool = False) -> None:
@@ -119,7 +119,7 @@ class QArraysWidget(QWidget):
         assert len(controller.selected_groups) == 1
         group = controller.selected_groups[0]
         layer = controller.viewer.add_labels([])
-        array = Array(name=layer.name, layer=layer, loaded_layer=layer)
+        array = Array(name=layer.name, layer=layer)
         group.arrays.append(array)
 
     def _on_delete_array_push_button_clicked(self, checked: bool = False) -> None:

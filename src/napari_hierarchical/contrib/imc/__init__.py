@@ -8,7 +8,7 @@ from napari_hierarchical.contrib.imc.model import IMCAcquisitionArray, IMCPanora
 from napari_hierarchical.hookspecs import ArrayLoaderFunction, GroupReaderFunction
 from napari_hierarchical.model import Array
 
-from ._reader import load_imc_acquisition, load_imc_panorama, read_imc
+from ._reader import load_imc_acquisition_array, load_imc_panorama_array, read_imc_group
 
 try:
     import readimc
@@ -27,24 +27,24 @@ def napari_hierarchical_get_group_reader(
     path: PathLike,
 ) -> Optional[GroupReaderFunction]:
     if available and Path(path).suffix.lower() == ".mcd":
-        return read_imc
+        return read_imc_group
     return None
 
 
 @hookimpl
 def napari_hierarchical_get_array_loader(array: Array) -> Optional[ArrayLoaderFunction]:
     if available and isinstance(array, IMCPanoramaArray):
-        return load_imc_panorama
+        return load_imc_panorama_array
     if available and isinstance(array, IMCAcquisitionArray):
-        return load_imc_acquisition
+        return load_imc_acquisition_array
     return None
 
 
 __all__ = [
     "available",
-    "read_imc",
-    "load_imc_panorama",
-    "load_imc_acquisition",
+    "read_imc_group",
+    "load_imc_panorama_array",
+    "load_imc_acquisition_array",
     "napari_hierarchical_get_group_reader",
     "napari_hierarchical_get_array_loader",
 ]

@@ -124,7 +124,6 @@ class Array(ParentAwareEventedModel[Group]):
 
     name: str
     layer: Optional[Layer] = None
-    loaded_layer: Optional[Layer] = Field(default=None, allow_mutation=False)
     flat_grouping_groups: FlatGroupingGroupsDict = Field(
         default_factory=FlatGroupingGroupsDict, allow_mutation=False
     )
@@ -140,9 +139,7 @@ class Array(ParentAwareEventedModel[Group]):
 
     @staticmethod
     def from_array(array: "Array") -> "Array":
-        new_array = Array(
-            name=array.name, layer=array.layer, loaded_layer=array.loaded_layer
-        )
+        new_array = Array(name=array.name, layer=array.layer)
         new_array.flat_grouping_groups.update(array.flat_grouping_groups)
         return new_array
 
