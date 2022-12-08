@@ -211,5 +211,3 @@ class QFlatGroupingTreeView(QTreeView):
                 # )
             finally:
                 self._updating_selection = False
-
-    # TODO context menu (save arrays)
