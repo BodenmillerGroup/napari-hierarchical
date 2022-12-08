@@ -127,6 +127,9 @@ class QArraysWidget(QWidget):
         arrays = list(controller.current_arrays.selection)
         controller.current_arrays.selection.clear()
         for array in arrays:
+            if array.loaded:
+                controller.unload_array(array)
+            assert array.parent is not None
             array.parent.arrays.remove(array)
 
     def _update_new_array_push_buttons_enabled(self) -> None:

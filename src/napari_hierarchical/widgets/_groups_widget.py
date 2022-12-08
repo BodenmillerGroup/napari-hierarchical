@@ -97,6 +97,8 @@ class QGroupsWidget(QWidget):
         groups = sorted(controller.selected_groups, key=_get_group_level, reverse=True)
         controller.selected_groups.clear()
         for group in groups:
+            if group.loaded in (None, True):
+                controller.unload_group(group)
             if group.parent is not None:
                 group.parent.children.remove(group)
             else:
