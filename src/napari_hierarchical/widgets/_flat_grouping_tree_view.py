@@ -2,8 +2,8 @@ import logging
 from typing import Callable, Optional, Set
 
 from napari.utils.events import Event
-from qtpy.QtCore import QItemSelection, QSortFilterProxyModel
-from qtpy.QtWidgets import QHeaderView, QTreeView, QWidget
+from qtpy.QtCore import QItemSelection, QPoint, QSortFilterProxyModel, Qt
+from qtpy.QtWidgets import QHeaderView, QMenu, QTreeView, QWidget
 
 from .._controller import HierarchicalController
 from ..model import Array
@@ -44,6 +44,8 @@ class QFlatGroupingTreeView(QTreeView):
             QFlatGroupingTreeModel.COLUMNS.VISIBLE,
             QHeaderView.ResizeMode.ResizeToContents,
         )
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._on_custom_context_menu_requested)
         self.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)
         self.setSelectionBehavior(QTreeView.SelectionBehavior.SelectRows)
         # self.setDragDropMode(QTreeView.DragDropMode.DragDrop)
@@ -64,6 +66,103 @@ class QFlatGroupingTreeView(QTreeView):
         self._controller.current_arrays.selection.events.changed.disconnect(
             self._on_current_arrays_selection_changed_event
         )
+
+    def _on_custom_context_menu_requested(self, pos: QPoint) -> None:
+        index = self.indexAt(pos)
+        if index.isValid():
+            array_or_arrays = index.internalPointer()
+            assert isinstance(array_or_arrays, (Array, Arrays))
+            if isinstance(array_or_arrays, Array):
+                array = array_or_arrays
+                menu = QMenu()
+                load_action = menu.addAction("Load")
+                load_action.setEnabled(
+                    not array.loaded and self._controller.can_load_array(array)
+                )
+                unload_action = menu.addAction("Unload")
+                unload_action.setEnabled(array.loaded)
+                save_action = menu.addAction("Save")
+                save_action.setEnabled(
+                    array.loaded and self._controller.can_save_array(array)
+                )
+                show_action = menu.addAction("Show")
+                show_action.setEnabled(array.loaded and not array.visible)
+                hide_action = menu.addAction("Hide")
+                hide_action.setEnabled(array.loaded and array.visible)
+                remove_action = menu.addAction("Remove")
+                result = menu.exec(self.mapToGlobal(pos))
+                if result == load_action:
+                    self._controller.load_array(array)
+                elif result == unload_action:
+                    self._controller.unload_array(array)
+                elif result == save_action:
+                    self._controller.save_array(array)
+                elif result == show_action:
+                    array.show()
+                elif result == hide_action:
+                    array.hide()
+                elif result == remove_action:
+                    if array.loaded:
+                        self._controller.unload_array(array)
+                    assert array.parent is not None
+                    array.parent.arrays.remove(array)
+            else:
+                arrays = array_or_arrays
+                menu = QMenu()
+                load_action = menu.addAction("Load")
+                load_action.setEnabled(
+                    all(
+                        self._controller.can_load_array(array)
+                        for array in arrays
+                        if not array.loaded
+                    )
+                )
+                unload_action = menu.addAction("Unload")
+                unload_action.setEnabled(any(array.loaded for array in arrays))
+                save_action = menu.addAction("Save")
+                save_action.setEnabled(
+                    all(
+                        self._controller.can_save_array(array)
+                        for array in arrays
+                        if array.loaded
+                    )
+                )
+                show_action = menu.addAction("Show")
+                show_action.setEnabled(
+                    any(not array.visible for array in arrays if array.loaded)
+                )
+                hide_action = menu.addAction("Hide")
+                hide_action.setEnabled(
+                    any(array.visible for array in arrays if array.loaded)
+                )
+                remove_action = menu.addAction("Remove")
+                result = menu.exec(self.mapToGlobal(pos))
+                if result == load_action:
+                    for array in arrays:
+                        if not array.loaded:
+                            self._controller.load_array(array)
+                elif result == unload_action:
+                    for array in arrays:
+                        if array.loaded:
+                            self._controller.unload_array(array)
+                elif result == save_action:
+                    for array in arrays:
+                        if array.loaded:
+                            self._controller.save_array(array)
+                elif result == show_action:
+                    for array in arrays:
+                        if array.loaded and not array.visible:
+                            array.show()
+                elif result == hide_action:
+                    for array in arrays:
+                        if array.loaded and array.visible:
+                            array.hide()
+                elif result == remove_action:
+                    for array in arrays:
+                        if array.loaded:
+                            self._controller.unload_array(array)
+                        assert array.parent is not None
+                        array.parent.arrays.remove(array)
 
     def _on_selection_changed(
         self, selected: QItemSelection, deselected: QItemSelection

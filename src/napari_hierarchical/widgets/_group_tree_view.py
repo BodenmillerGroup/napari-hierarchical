@@ -2,8 +2,14 @@ import logging
 from typing import Optional, Set
 
 from napari.utils.events import Event, EventedList
-from qtpy.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange, Qt
-from qtpy.QtWidgets import QHeaderView, QTreeView, QWidget
+from qtpy.QtCore import (
+    QItemSelection,
+    QItemSelectionModel,
+    QItemSelectionRange,
+    QPoint,
+    Qt,
+)
+from qtpy.QtWidgets import QFileDialog, QHeaderView, QMenu, QTreeView, QWidget
 
 from .._controller import HierarchicalController
 from ..model import Group
@@ -33,6 +39,8 @@ class QGroupTreeView(QTreeView):
         self.header().setSectionResizeMode(
             QGroupTreeModel.COLUMNS.VISIBLE, QHeaderView.ResizeMode.ResizeToContents
         )
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._on_custom_context_menu_requested)
         self.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)
         self.setSelectionBehavior(QTreeView.SelectionBehavior.SelectRows)
         self.setDragDropMode(QTreeView.DragDropMode.DragDrop)
@@ -51,6 +59,57 @@ class QGroupTreeView(QTreeView):
         self._controller.selected_groups.events.disconnect(
             self._on_selected_groups_event
         )
+
+    def _on_custom_context_menu_requested(self, pos: QPoint) -> None:
+        index = self.indexAt(pos)
+        if index.isValid():
+            group = index.internalPointer()
+            assert isinstance(group, Group)
+            menu = QMenu()
+            save_as_action = menu.addAction("Save As...")
+            save_as_action.setEnabled(group.parent is None)
+            remove_action = menu.addAction("Remove")
+            menu.addSeparator()
+            load_arrays_action = menu.addAction("Load arrays")
+            load_arrays_action.setEnabled(
+                group.loaded in (None, False) and self._controller.can_load_group(group)
+            )
+            unload_arrays_action = menu.addAction("Unload arrays")
+            unload_arrays_action.setEnabled(group.loaded in (None, True))
+            save_arrays_action = menu.addAction("Save arrays")
+            save_arrays_action.setEnabled(
+                group.loaded in (None, True) and self._controller.can_save_group(group)
+            )
+            show_arrays_action = menu.addAction("Show arrays")
+            show_arrays_action.setEnabled(
+                group.loaded in (None, True) and group.visible in (None, False)
+            )
+            hide_arrays_action = menu.addAction("Hide arrays")
+            hide_arrays_action.setEnabled(
+                group.loaded in (None, True) and group.visible in (None, True)
+            )
+            result = menu.exec(self.mapToGlobal(pos))
+            if result == save_as_action:
+                path, _ = QFileDialog.getSaveFileName()
+                if path:
+                    self._controller.write_group(path, group)
+            elif result == remove_action:
+                if group.loaded in (None, True):
+                    self._controller.unload_group(group)
+                if group.parent is not None:
+                    group.parent.children.remove(group)
+                else:
+                    self._controller.groups.remove(group)
+            elif result == load_arrays_action:
+                self._controller.load_group(group)
+            elif result == unload_arrays_action:
+                self._controller.unload_group(group)
+            elif result == save_arrays_action:
+                self._controller.save_group(group)
+            elif result == show_arrays_action:
+                group.show()
+            elif result == hide_arrays_action:
+                group.hide()
 
     def _on_selection_changed(
         self, selected: QItemSelection, deselected: QItemSelection
@@ -94,5 +153,3 @@ class QGroupTreeView(QTreeView):
                 )
             finally:
                 self._updating_selection = False
-
-    # TODO context menu (write/save group)

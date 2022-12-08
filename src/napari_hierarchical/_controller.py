@@ -69,28 +69,6 @@ class HierarchicalController:
     def can_read_group(self, path: PathLike) -> bool:
         return self._get_group_reader_function(path) is not None
 
-    def can_write_group(self, path: PathLike, group: Group) -> bool:
-        return (
-            self._get_group_reader_function(path) is not None
-            and self._get_group_writer_function(path, group) is not None
-        )
-
-    def can_load_group(self, group: Group) -> bool:
-        return not group.dirty and all(
-            self.can_load_array(array) for array in group.iter_arrays(recursive=True)
-        )
-
-    def can_save_group(self, group: Group) -> bool:
-        return not group.dirty and all(
-            self.can_save_array(array) for array in group.iter_arrays(recursive=True)
-        )
-
-    def can_load_array(self, array: Array) -> bool:
-        return self._get_array_loader_function(array) is not None
-
-    def can_save_array(self, array: Array) -> bool:
-        return self._get_array_saver_function(array) is not None
-
     def read_group(self, path: PathLike) -> Group:
         logger.debug(f"path={path}")
         group_reader_function = self._get_group_reader_function(path)
@@ -102,6 +80,12 @@ class HierarchicalController:
             raise HierarchicalControllerException(e)
         self._groups.append(group)
         return group
+
+    def can_write_group(self, path: PathLike, group: Group) -> bool:
+        return (
+            self._get_group_reader_function(path) is not None
+            and self._get_group_writer_function(path, group) is not None
+        )
 
     def write_group(self, path: PathLike, group: Group) -> None:
         logger.debug(f"path={path}, group={group}")
@@ -119,40 +103,76 @@ class HierarchicalController:
             raise HierarchicalControllerException(e)
         self._groups[index] = new_group
 
+    def can_load_group(self, group: Group) -> bool:
+        return not group.dirty and all(
+            self.can_load_array(array)
+            for array in group.iter_arrays(recursive=True)
+            if not array.loaded
+        )
+
     def load_group(self, group: Group) -> None:
         logger.debug(f"group={group}")
         for array in group.iter_arrays(recursive=True):
-            self.load_array(array)
-
-    def save_group(self, group: Group) -> None:
-        logger.debug(f"group={group}")
-        for array in group.iter_arrays(recursive=True):
-            self.save_array(array)
+            if not array.loaded:
+                self.load_array(array)
 
     def unload_group(self, group: Group) -> None:
         logger.debug(f"group={group}")
         for array in group.iter_arrays(recursive=True):
-            self.unload_array(array)
+            if array.loaded:
+                self.unload_array(array)
+
+    def can_load_array(self, array: Array) -> bool:
+        return self._get_array_loader_function(array) is not None
 
     def load_array(self, array: Array) -> None:
         assert self._viewer is not None
-        if not array.loaded:
-            logger.debug(f"group={array}")
-            array_loader_function = self._get_array_loader_function(array)
-            if array_loader_function is None:
-                raise HierarchicalControllerException(
-                    f"No array loader found for {array}"
-                )
-            try:
-                array_loader_function(array)
-            except Exception as e:
-                raise HierarchicalControllerException(e)
-            assert array.layer is not None
-            self._viewer.add_layer(array.layer)
+        if array.loaded:
+            raise HierarchicalControllerException(
+                f"Array has already been loaded: {array}"
+            )
+        logger.debug(f"array={array}")
+        array_loader_function = self._get_array_loader_function(array)
+        if array_loader_function is None:
+            raise HierarchicalControllerException(f"No array loader found for {array}")
+        try:
+            array_loader_function(array)
+        except Exception as e:
+            raise HierarchicalControllerException(e)
+        assert array.layer is not None
+        self._viewer.add_layer(array.layer)
+
+    def unload_array(self, array: Array) -> None:
+        logger.debug(f"array={array}")
+        if array.layer is None:
+            raise HierarchicalControllerException(f"Array has not been loaded: {array}")
+        if self._viewer is not None and array.layer in self._viewer.layers:
+            self._viewer.layers.remove(array.layer)
+        array.layer = None
+
+    def can_save_group(self, group: Group) -> bool:
+        return not group.dirty and all(
+            self.can_save_array(array)
+            for array in group.iter_arrays(recursive=True)
+            if array.loaded
+        )
+
+    def save_group(self, group: Group) -> None:
+        logger.debug(f"group={group}")
+        if group.dirty:
+            raise HierarchicalControllerException(
+                f"Group structure has been modified: {group}"
+            )
+        for array in group.iter_arrays(recursive=True):
+            if array.loaded:
+                self.save_array(array)
+
+    def can_save_array(self, array: Array) -> bool:
+        return self._get_array_saver_function(array) is not None
 
     def save_array(self, array: Array) -> None:
-        logger.debug(f"group={array}")
-        if array.layer is None:
+        logger.debug(f"array={array}")
+        if not array.loaded:
             raise HierarchicalControllerException(f"Array is not loaded: {array}")
         array_saver_function = self._get_array_saver_function(array)
         if array_saver_function is None:
@@ -161,13 +181,6 @@ class HierarchicalController:
             array_saver_function(array)
         except Exception as e:
             raise HierarchicalControllerException(e)
-
-    def unload_array(self, array: Array) -> None:
-        logger.debug(f"group={array}")
-        if array.layer is not None:
-            if self._viewer is not None and array.layer in self._viewer.layers:
-                self._viewer.layers.remove(array.layer)
-            array.layer = None
 
     def _get_group_reader_function(
         self, path: PathLike
@@ -306,7 +319,7 @@ class HierarchicalController:
                     array
                     for group in self._groups
                     for array in group.iter_arrays(recursive=True)
-                    if array.layer == layer
+                    if array.layer is not None and array.layer == layer
                 ),
                 None,
             )
@@ -321,7 +334,7 @@ class HierarchicalController:
                     array
                     for group in self._groups
                     for array in group.iter_arrays(recursive=True)
-                    if array.layer == old_layer
+                    if array.layer is not None and array.layer == old_layer
                 ),
                 None,
             )
@@ -339,7 +352,7 @@ class HierarchicalController:
                         array
                         for group in self._groups
                         for array in group.iter_arrays(recursive=True)
-                        if array.layer == old_layer
+                        if array.layer is not None and array.layer == old_layer
                     ),
                     None,
                 )
@@ -363,7 +376,7 @@ class HierarchicalController:
                     array
                     for layer in self._viewer.layers.selection
                     for array in self._current_arrays
-                    if array.layer == layer
+                    if array.layer is not None and array.layer == layer
                 }
             finally:
                 self._updating_current_arrays_selection = False

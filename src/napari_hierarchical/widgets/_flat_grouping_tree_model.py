@@ -158,18 +158,16 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                         return arrays.flat_group
                 elif index.column() == self.COLUMNS.LOADED:
                     if role == Qt.ItemDataRole.CheckStateRole:
-                        n_loaded = sum(array.loaded for array in arrays)
-                        if n_loaded == 0:
+                        if not any(array.loaded for array in arrays):
                             return Qt.CheckState.Unchecked
-                        if n_loaded == len(arrays):
+                        if all(array.loaded for array in arrays):
                             return Qt.CheckState.Checked
                         return Qt.CheckState.PartiallyChecked
                 elif index.column() == self.COLUMNS.VISIBLE:
                     if role == Qt.ItemDataRole.CheckStateRole:
-                        n_visible = sum(array.visible for array in arrays)
-                        if n_visible == 0:
+                        if not any(array.visible for array in arrays if array.loaded):
                             return Qt.CheckState.Unchecked
-                        if n_visible == sum(array.loaded for array in arrays):
+                        if all(array.visible for array in arrays if array.loaded):
                             return Qt.CheckState.Checked
                         return Qt.CheckState.PartiallyChecked
                 else:
@@ -223,21 +221,23 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                         assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
                         if value == Qt.CheckState.Checked:
                             for array in arrays:
-                                self._controller.load_array(array)
+                                if not array.loaded:
+                                    self._controller.load_array(array)
                         else:
                             for array in arrays:
-                                self._controller.unload_array(array)
+                                if array.loaded:
+                                    self._controller.unload_array(array)
                         return True
                 elif index.column() == self.COLUMNS.VISIBLE:
                     if role == Qt.ItemDataRole.CheckStateRole:
                         assert value in (Qt.CheckState.Checked, Qt.CheckState.Unchecked)
                         if value == Qt.CheckState.Checked:
                             for array in arrays:
-                                if array.loaded:
+                                if array.loaded and not array.visible:
                                     array.show()
                         else:
                             for array in arrays:
-                                if array.loaded:
+                                if array.loaded and array.visible:
                                     array.hide()
                         return True
                 else:
@@ -299,11 +299,11 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                     flags = (
                         Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable
                     )
-                    n_loaded_or_loadable = sum(
-                        array.loaded or self._controller.can_load_array(array)
+                    if all(
+                        self._controller.can_load_array(array)
                         for array in arrays
-                    )
-                    if n_loaded_or_loadable == len(arrays):
+                        if not array.loaded
+                    ):
                         flags |= Qt.ItemFlag.ItemIsEnabled
                     # if self._flat_grouping is not None:
                     #     flags |= Qt.ItemFlag.ItemIsDropEnabled
@@ -314,8 +314,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                     flags = (
                         Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable
                     )
-                    n_loaded = sum(array.loaded for array in arrays)
-                    if n_loaded > 0:
+                    if any(array.loaded for array in arrays):
                         flags |= Qt.ItemFlag.ItemIsEnabled
                     # if self._flat_grouping is not None:
                     #     flags |= Qt.ItemFlag.ItemIsDropEnabled

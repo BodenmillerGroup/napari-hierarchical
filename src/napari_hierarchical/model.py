@@ -41,12 +41,12 @@ class Group(NestedParentAwareEventedModel["Group"]):
 
     def show(self) -> None:
         for array in self.iter_arrays(recursive=True):
-            if array.loaded:
+            if array.loaded and not array.visible:
                 array.show()
 
     def hide(self) -> None:
         for array in self.iter_arrays(recursive=True):
-            if array.loaded:
+            if array.loaded and array.visible:
                 array.hide()
 
     def commit(self) -> None:
@@ -91,19 +91,21 @@ class Group(NestedParentAwareEventedModel["Group"]):
 
     @property
     def loaded(self) -> Optional[bool]:
-        n_loaded = sum(array.loaded for array in self.iter_arrays(recursive=True))
-        if n_loaded == 0:
+        if not any(array.loaded for array in self.iter_arrays(recursive=True)):
             return False
-        if n_loaded == sum(1 for _ in self.iter_arrays(recursive=True)):
+        if all(array.loaded for array in self.iter_arrays(recursive=True)):
             return True
         return None
 
     @property
     def visible(self) -> Optional[bool]:
-        n_visible = sum(array.visible for array in self.iter_arrays(recursive=True))
-        if n_visible == 0:
+        if not any(
+            array.visible for array in self.iter_arrays(recursive=True) if array.loaded
+        ):
             return False
-        if n_visible == sum(array.loaded for array in self.iter_arrays(recursive=True)):
+        if all(
+            array.visible for array in self.iter_arrays(recursive=True) if array.loaded
+        ):
             return True
         return None
 
