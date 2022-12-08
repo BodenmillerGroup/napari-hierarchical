@@ -294,7 +294,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                     )
                     # if self._flat_grouping is not None:
                     #     flags |= Qt.ItemFlag.ItemIsDropEnabled
-                    if self._flat_grouping is not None:
+                    if self._flat_grouping is None:
                         flags |= Qt.ItemFlag.ItemNeverHasChildren
                     return flags
                 if index.column() == self.COLUMNS.LOADED:
@@ -308,7 +308,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                         flags |= Qt.ItemFlag.ItemIsEnabled
                     # if self._flat_grouping is not None:
                     #     flags |= Qt.ItemFlag.ItemIsDropEnabled
-                    if self._flat_grouping is not None:
+                    if self._flat_grouping is None:
                         flags |= Qt.ItemFlag.ItemNeverHasChildren
                     return flags
                 if index.column() == self.COLUMNS.VISIBLE:
@@ -319,7 +319,7 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                         flags |= Qt.ItemFlag.ItemIsEnabled
                     # if self._flat_grouping is not None:
                     #     flags |= Qt.ItemFlag.ItemIsDropEnabled
-                    if self._flat_grouping is not None:
+                    if self._flat_grouping is None:
                         flags |= Qt.ItemFlag.ItemNeverHasChildren
                     return flags
         return super().flags(index)
