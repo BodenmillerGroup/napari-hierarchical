@@ -83,26 +83,26 @@ class QFlatGroupingTreeView(QTreeView):
                     )
                     unload_action = menu.addAction("Unload")
                     unload_action.setEnabled(array.loaded)
-                    save_action = menu.addAction("Save")
-                    save_action.setEnabled(
-                        array.loaded and self._controller.can_save_array(array)
-                    )
                     show_action = menu.addAction("Show")
                     show_action.setEnabled(array.loaded and not array.visible)
                     hide_action = menu.addAction("Hide")
                     hide_action.setEnabled(array.loaded and array.visible)
+                    save_action = menu.addAction("Save")
+                    save_action.setEnabled(
+                        array.loaded and self._controller.can_save_array(array)
+                    )
                     remove_action = menu.addAction("Remove")
                     result = menu.exec(self.mapToGlobal(pos))
                     if result == load_action:
                         self._controller.load_array(array)
                     elif result == unload_action:
                         self._controller.unload_array(array)
-                    elif result == save_action:
-                        self._controller.save_array(array)
                     elif result == show_action:
                         array.show()
                     elif result == hide_action:
                         array.hide()
+                    elif result == save_action:
+                        self._controller.save_array(array)
                     elif result == remove_action:
                         if array.loaded:
                             self._controller.unload_array(array)
@@ -122,6 +122,14 @@ class QFlatGroupingTreeView(QTreeView):
                     )
                     unload_action = menu.addAction("Unload")
                     unload_action.setEnabled(any(array.loaded for array in arrays))
+                    show_action = menu.addAction("Show")
+                    show_action.setEnabled(
+                        any(not array.visible for array in arrays if array.loaded)
+                    )
+                    hide_action = menu.addAction("Hide")
+                    hide_action.setEnabled(
+                        any(array.visible for array in arrays if array.loaded)
+                    )
                     save_action = menu.addAction("Save")
                     save_action.setEnabled(
                         any(array.loaded for array in arrays)
@@ -130,14 +138,6 @@ class QFlatGroupingTreeView(QTreeView):
                             for array in arrays
                             if array.loaded
                         )
-                    )
-                    show_action = menu.addAction("Show")
-                    show_action.setEnabled(
-                        any(not array.visible for array in arrays if array.loaded)
-                    )
-                    hide_action = menu.addAction("Hide")
-                    hide_action.setEnabled(
-                        any(array.visible for array in arrays if array.loaded)
                     )
                     remove_action = menu.addAction("Remove")
                     result = menu.exec(self.mapToGlobal(pos))
@@ -149,10 +149,6 @@ class QFlatGroupingTreeView(QTreeView):
                         for array in arrays:
                             if array.loaded:
                                 self._controller.unload_array(array)
-                    elif result == save_action:
-                        for array in arrays:
-                            if array.loaded:
-                                self._controller.save_array(array)
                     elif result == show_action:
                         for array in arrays:
                             if array.loaded and not array.visible:
@@ -161,6 +157,10 @@ class QFlatGroupingTreeView(QTreeView):
                         for array in arrays:
                             if array.loaded and array.visible:
                                 array.hide()
+                    elif result == save_action:
+                        for array in arrays:
+                            if array.loaded:
+                                self._controller.save_array(array)
                     elif result == remove_action:
                         for array in arrays:
                             if array.loaded:

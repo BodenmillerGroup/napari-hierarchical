@@ -66,10 +66,9 @@ class QGroupTreeView(QTreeView):
             group = index.internalPointer()
             assert isinstance(group, Group)
             menu = QMenu()
+            export_action = None
             if group.parent is None:
-                export_as_action = menu.addAction("Export As...")
-            else:
-                export_as_action = None
+                export_action = menu.addAction("Export")
             remove_action = menu.addAction("Remove")
             menu.addSeparator()
             load_arrays_action = menu.addAction("Load arrays")
@@ -78,10 +77,6 @@ class QGroupTreeView(QTreeView):
             )
             unload_arrays_action = menu.addAction("Unload arrays")
             unload_arrays_action.setEnabled(group.loaded in (None, True))
-            save_arrays_action = menu.addAction("Save arrays")
-            save_arrays_action.setEnabled(
-                group.loaded in (None, True) and self._controller.can_save_group(group)
-            )
             show_arrays_action = menu.addAction("Show arrays")
             show_arrays_action.setEnabled(
                 group.loaded in (None, True) and group.visible in (None, False)
@@ -90,8 +85,12 @@ class QGroupTreeView(QTreeView):
             hide_arrays_action.setEnabled(
                 group.loaded in (None, True) and group.visible in (None, True)
             )
+            save_arrays_action = menu.addAction("Save arrays")
+            save_arrays_action.setEnabled(
+                group.loaded in (None, True) and self._controller.can_save_group(group)
+            )
             result = menu.exec(self.mapToGlobal(pos))
-            if export_as_action is not None and result == export_as_action:
+            if export_action is not None and result == export_action:
                 path, _ = QFileDialog.getSaveFileName()
                 if path:
                     self._controller.write_group(path, group)
@@ -106,12 +105,12 @@ class QGroupTreeView(QTreeView):
                 self._controller.load_group(group)
             elif result == unload_arrays_action:
                 self._controller.unload_group(group)
-            elif result == save_arrays_action:
-                self._controller.save_group(group)
             elif result == show_arrays_action:
                 group.show()
             elif result == hide_arrays_action:
                 group.hide()
+            elif result == save_arrays_action:
+                self._controller.save_group(group)
 
     def _on_selection_changed(
         self, selected: QItemSelection, deselected: QItemSelection
