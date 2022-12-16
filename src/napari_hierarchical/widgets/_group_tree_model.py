@@ -166,7 +166,7 @@ class QGroupTreeModel(QAbstractItemModel):
                     | Qt.ItemFlag.ItemIsUserCheckable
                     | Qt.ItemFlag.ItemIsDropEnabled
                 )
-                if group.loaded or self._controller.can_load_group(group):
+                if self._controller.can_load_group(group):
                     flags |= Qt.ItemFlag.ItemIsEnabled
                 if group.loaded:
                     flags |= Qt.ItemFlag.ItemIsDragEnabled
