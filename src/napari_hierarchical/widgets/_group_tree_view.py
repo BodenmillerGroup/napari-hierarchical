@@ -66,17 +66,22 @@ class QGroupTreeView(QTreeView):
             group = index.internalPointer()
             assert isinstance(group, Group)
             menu = QMenu()
-            export_action = None
+            remove_action = menu.addAction("Remove")
             if group.parent is None:
                 export_action = menu.addAction("Export")
-            remove_action = menu.addAction("Remove")
+            else:
+                export_action = None
             menu.addSeparator()
             load_arrays_action = menu.addAction("Load arrays")
             load_arrays_action.setEnabled(
-                group.loaded in (None, False) and self._controller.can_load_group(group)
+                group.loaded in (None, False)
+                and self._controller.can_load_group(group, unloaded_only=True)
             )
             unload_arrays_action = menu.addAction("Unload arrays")
-            unload_arrays_action.setEnabled(group.loaded in (None, True))
+            unload_arrays_action.setEnabled(
+                group.loaded in (None, True)
+                and self._controller.can_load_group(group, loaded_only=True)
+            )
             show_arrays_action = menu.addAction("Show arrays")
             show_arrays_action.setEnabled(
                 group.loaded in (None, True) and group.visible in (None, False)

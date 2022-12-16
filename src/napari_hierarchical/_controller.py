@@ -82,10 +82,7 @@ class HierarchicalController:
         return group
 
     def can_write_group(self, path: PathLike, group: Group) -> bool:
-        return (
-            self._get_group_reader_function(path) is not None
-            and self._get_group_writer_function(path, group) is not None
-        )
+        return self._get_group_writer_function(path, group) is not None
 
     def write_group(self, path: PathLike, group: Group) -> None:
         logger.debug(f"path={path}, group={group}")
@@ -97,13 +94,14 @@ class HierarchicalController:
         except Exception as e:
             raise HierarchicalControllerException(e)
 
-    def can_load_group(self, group: Group) -> bool:
-        return any(
-            not array.loaded for array in group.iter_arrays(recursive=True)
-        ) and all(
+    def can_load_group(
+        self, group: Group, loaded_only: bool = False, unloaded_only: bool = False
+    ) -> bool:
+        return all(
             self.can_load_array(array)
             for array in group.iter_arrays(recursive=True)
-            if not array.loaded
+            if (not loaded_only or array.loaded)
+            and (not unloaded_only or not array.loaded)
         )
 
     def load_group(self, group: Group) -> None:
@@ -147,14 +145,10 @@ class HierarchicalController:
         array.layer = None
 
     def can_save_group(self, group: Group) -> bool:
-        return (
-            not group.dirty
-            and any(array.loaded for array in group.iter_arrays(recursive=True))
-            and all(
-                self.can_save_array(array)
-                for array in group.iter_arrays(recursive=True)
-                if array.loaded
-            )
+        return not group.dirty and all(
+            self.can_save_array(array)
+            for array in group.iter_arrays(recursive=True)
+            if array.loaded
         )
 
     def save_group(self, group: Group) -> None:

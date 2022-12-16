@@ -301,8 +301,20 @@ class QFlatGroupingTreeModel(QAbstractItemModel):
                     flags = (
                         Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable
                     )
-                    if all(self._controller.can_load_array(array) for array in arrays):
-                        flags |= Qt.ItemFlag.ItemIsEnabled
+                    if not any(array.loaded for array in arrays) or all(
+                        array.loaded for array in arrays
+                    ):  # load/unload all
+                        if all(
+                            self._controller.can_load_array(array) for array in arrays
+                        ):
+                            flags |= Qt.ItemFlag.ItemIsEnabled
+                    else:  # only load remaining
+                        if all(
+                            self._controller.can_load_array(array)
+                            for array in arrays
+                            if not array.loaded
+                        ):
+                            flags |= Qt.ItemFlag.ItemIsEnabled
                     # if self._flat_grouping is not None:
                     #     flags |= Qt.ItemFlag.ItemIsDropEnabled
                     if self._flat_grouping is None:

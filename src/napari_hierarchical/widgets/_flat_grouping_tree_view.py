@@ -82,7 +82,9 @@ class QFlatGroupingTreeView(QTreeView):
                         not array.loaded and self._controller.can_load_array(array)
                     )
                     unload_action = menu.addAction("Unload")
-                    unload_action.setEnabled(array.loaded)
+                    unload_action.setEnabled(
+                        array.loaded and self._controller.can_load_array(array)
+                    )
                     show_action = menu.addAction("Show")
                     show_action.setEnabled(array.loaded and not array.visible)
                     hide_action = menu.addAction("Hide")
@@ -121,7 +123,14 @@ class QFlatGroupingTreeView(QTreeView):
                         )
                     )
                     unload_action = menu.addAction("Unload")
-                    unload_action.setEnabled(any(array.loaded for array in arrays))
+                    unload_action.setEnabled(
+                        any(array.loaded for array in arrays)
+                        and all(
+                            self._controller.can_load_array(array)
+                            for array in arrays
+                            if array.loaded
+                        )
+                    )
                     show_action = menu.addAction("Show")
                     show_action.setEnabled(
                         any(not array.visible for array in arrays if array.loaded)
