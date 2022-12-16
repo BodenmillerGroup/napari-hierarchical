@@ -69,6 +69,7 @@ class QGroupTreeView(QTreeView):
             remove_action = menu.addAction("Remove")
             if group.parent is None:
                 export_action = menu.addAction("Export")
+                export_action.setEnabled(group.loaded is not None and group.loaded)
             else:
                 export_action = None
             menu.addSeparator()
