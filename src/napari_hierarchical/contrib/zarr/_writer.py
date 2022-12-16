@@ -1,6 +1,8 @@
 import os
 from typing import Union
 
+import numpy as np
+
 from napari_hierarchical.model import Array, Group
 
 from .model import ZarrArray
@@ -36,7 +38,8 @@ def save_zarr_array(array: Array) -> None:
 def _write_zarr_group(group: Group, zarr_group: "zarr.Group") -> None:
     for array in group.arrays:
         assert array.layer is not None
-        zarr_group.create_dataset(name=array.name, data=array.layer.data)
+        data = np.asarray(array.layer.data)
+        zarr_group.create_dataset(name=array.name, data=data)
     for child in group.children:
         g = zarr_group.create_group(name=child.name)
         _write_zarr_group(child, g)
