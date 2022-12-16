@@ -60,8 +60,11 @@ def _read_zarr_group(
 def _read_zarr_array(
     zarr_file: str, zarr_names: Sequence[str], zarr_array: "zarr.Array"
 ) -> ZarrArray:
+    if len(zarr_names) > 0:
+        name = zarr_names[-1]
+    else:
+        name = Path(zarr_file).name
     zarr_path = "/".join(zarr_names)
-    name = f"{Path(zarr_file).name} [/{zarr_path}]"
     array = ZarrArray(name=name, zarr_file=zarr_file, zarr_path=zarr_path)
     if len(zarr_names) > 0:
         array.flat_grouping_groups["Path"] = (
