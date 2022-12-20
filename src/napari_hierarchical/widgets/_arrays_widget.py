@@ -1,6 +1,7 @@
 import logging
 from typing import Optional, Union
 
+import numpy as np
 from napari.utils.events import Event, EventedList
 from napari.viewer import Viewer
 from qtpy.QtCore import Qt
@@ -100,7 +101,10 @@ class QArraysWidget(QWidget):
         assert controller.viewer is not None
         assert len(controller.selected_groups) == 1
         group = controller.selected_groups[0]
-        layer = controller.viewer.add_points()
+        layer = controller.viewer.add_points(
+            ndim=max(controller.viewer.dims.ndim, 2),
+            scale=controller.viewer.layers.extent.step,
+        )
         array = Array(name=layer.name, layer=layer)
         group.arrays.append(array)
 
@@ -109,7 +113,10 @@ class QArraysWidget(QWidget):
         assert controller.viewer is not None
         assert len(controller.selected_groups) == 1
         group = controller.selected_groups[0]
-        layer = controller.viewer.add_shapes()
+        layer = controller.viewer.add_shapes(
+            ndim=max(controller.viewer.dims.ndim, 2),
+            scale=controller.viewer.layers.extent.step,
+        )
         array = Array(name=layer.name, layer=layer)
         group.arrays.append(array)
 
@@ -118,7 +125,24 @@ class QArraysWidget(QWidget):
         assert controller.viewer is not None
         assert len(controller.selected_groups) == 1
         group = controller.selected_groups[0]
-        layer = controller.viewer.add_labels([])
+        layer = controller.viewer.add_labels(
+            np.zeros(
+                [
+                    np.round(s / sc).astype("int") if s > 0 else 1
+                    for s, sc in zip(
+                        controller.viewer.layers.extent.world[1]
+                        - controller.viewer.layers.extent.world[0],
+                        controller.viewer.layers.extent.step,
+                    )
+                ],
+                dtype=int,
+            ),
+            translate=np.array(
+                controller.viewer.layers.extent.world[0]
+                + 0.5 * controller.viewer.layers.extent.step
+            ),
+            scale=controller.viewer.layers.extent.step,
+        )  # copied from ViewerModel._new_labels()
         array = Array(name=layer.name, layer=layer)
         group.arrays.append(array)
 
