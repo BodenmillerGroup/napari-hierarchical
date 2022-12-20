@@ -1,0 +1,11 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="icons">
+        <file alias="loaded.svg">icons/loaded.svg</file>
+        <file alias="loaded_off.svg">icons/loaded_off.svg</file>
+        <file alias="loaded_partial.svg">icons/loaded_partial.svg</file>
+        <file alias="visible.svg">icons/visible.svg</file>
+        <file alias="visible_off.svg">icons/visible_off.svg</file>
+        <file alias="visible_partial.svg">icons/visible_partial.svg</file>
+    </qresource>
+</RCC>

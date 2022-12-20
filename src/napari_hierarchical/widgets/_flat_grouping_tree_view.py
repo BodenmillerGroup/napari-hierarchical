@@ -8,6 +8,8 @@ from qtpy.QtWidgets import QHeaderView, QMenu, QTreeView, QWidget
 from .._controller import HierarchicalController
 from ..model import Array
 from ._flat_grouping_tree_model import Arrays, QFlatGroupingTreeModel
+from .resources import get_pixmap
+from .utils import QIconCheckboxDelegate
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,26 @@ class QFlatGroupingTreeView(QTreeView):
         self.header().setSectionResizeMode(
             QFlatGroupingTreeModel.COLUMNS.VISIBLE,
             QHeaderView.ResizeMode.ResizeToContents,
+        )
+        self.setItemDelegateForColumn(
+            QFlatGroupingTreeModel.COLUMNS.LOADED,
+            QIconCheckboxDelegate(
+                get_pixmap(":/icons/loaded.svg"),
+                get_pixmap(":/icons/loaded_off.svg"),
+                get_pixmap(":/icons/loaded_partial.svg"),
+                (18, 18),
+                self,
+            ),
+        )
+        self.setItemDelegateForColumn(
+            QFlatGroupingTreeModel.COLUMNS.VISIBLE,
+            QIconCheckboxDelegate(
+                get_pixmap(":/icons/visible.svg"),
+                get_pixmap(":/icons/visible_off.svg"),
+                get_pixmap(":/icons/visible_partial.svg"),
+                (18, 18),
+                self,
+            ),
         )
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._on_custom_context_menu_requested)

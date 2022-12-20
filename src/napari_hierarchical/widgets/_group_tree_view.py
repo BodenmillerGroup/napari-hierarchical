@@ -14,6 +14,8 @@ from qtpy.QtWidgets import QFileDialog, QHeaderView, QMenu, QTreeView, QWidget
 from .._controller import HierarchicalController
 from ..model import Group
 from ._group_tree_model import QGroupTreeModel
+from .resources import get_pixmap
+from .utils import QIconCheckboxDelegate
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,26 @@ class QGroupTreeView(QTreeView):
         )
         self.header().setSectionResizeMode(
             QGroupTreeModel.COLUMNS.VISIBLE, QHeaderView.ResizeMode.ResizeToContents
+        )
+        self.setItemDelegateForColumn(
+            QGroupTreeModel.COLUMNS.LOADED,
+            QIconCheckboxDelegate(
+                get_pixmap(":/icons/loaded.svg"),
+                get_pixmap(":/icons/loaded_off.svg"),
+                get_pixmap(":/icons/loaded_partial.svg"),
+                (18, 18),
+                self,
+            ),
+        )
+        self.setItemDelegateForColumn(
+            QGroupTreeModel.COLUMNS.VISIBLE,
+            QIconCheckboxDelegate(
+                get_pixmap(":/icons/visible.svg"),
+                get_pixmap(":/icons/visible_off.svg"),
+                get_pixmap(":/icons/visible_partial.svg"),
+                (18, 18),
+                self,
+            ),
         )
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._on_custom_context_menu_requested)
