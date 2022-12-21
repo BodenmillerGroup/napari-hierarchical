@@ -125,6 +125,9 @@ class QGroupTreeView(QTreeView):
             elif result == remove_action:
                 if group.loaded in (None, True):
                     self._controller.unload_group(group)
+                assert all(
+                    array.layer is None for array in group.iter_arrays(recursive=True)
+                )
                 if group.parent is not None:
                     group.parent.children.remove(group)
                 else:

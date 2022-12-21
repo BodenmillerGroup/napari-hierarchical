@@ -302,6 +302,8 @@ class QGroupTreeModel(QAbstractItemModel):
             groups_copy = [groups[i] for i in range(row, row + count)]
             for group in groups_copy:
                 logger.debug(f"groups={groups}, group={group}")
+                for array in group.iter_arrays(recursive=True):
+                    array.layer = None
                 groups.remove(group)
             return True
         return False

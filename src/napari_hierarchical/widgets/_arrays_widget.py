@@ -153,6 +153,7 @@ class QArraysWidget(QWidget):
         for array in arrays:
             if array.loaded:
                 controller.unload_array(array)
+            assert array.layer is None
             assert array.parent is not None
             array.parent.arrays.remove(array)
 

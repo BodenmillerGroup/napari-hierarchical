@@ -140,6 +140,10 @@ class Array(ParentAwareEventedModel[Group]):
         self.events.layer.connect(self._on_layer_event)
         self.events.loaded.connect(self._on_loaded_event)
         self.events.visible.connect(self._on_visible_event)
+        layer = kwargs.get("layer")
+        if layer is not None:
+            layer.events.name.connect(self._on_layer_name_event)
+            layer.events.visible.connect(self._on_layer_visible_event)
 
     @staticmethod
     def from_array(array: "Array") -> "Array":

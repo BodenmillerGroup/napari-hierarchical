@@ -99,6 +99,9 @@ class QGroupsWidget(QWidget):
         for group in groups:
             if group.loaded in (None, True):
                 controller.unload_group(group)
+            assert all(
+                array.layer is None for array in group.iter_arrays(recursive=True)
+            )
             if group.parent is not None:
                 group.parent.children.remove(group)
             else:
