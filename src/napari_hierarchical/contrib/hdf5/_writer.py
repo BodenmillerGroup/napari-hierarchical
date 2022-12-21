@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Union
 
 from napari_hierarchical.model import Array, Group
@@ -35,7 +36,7 @@ def save_hdf5_array(array: Array) -> None:
 def _write_hdf5_group(group: Group, hdf5_group: "h5py.Group") -> None:
     for array in group.arrays:
         assert array.layer is not None
-        hdf5_group.create_dataset(name=array.name, data=array.layer.data)
+        hdf5_group.create_dataset(name=Path(array.name).name, data=array.layer.data)
     for child in group.children:
         g = hdf5_group.create_group(name=child.name)
         _write_hdf5_group(child, g)

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Union
 
 import numpy as np
@@ -39,7 +40,7 @@ def _write_zarr_group(group: Group, zarr_group: "zarr.Group") -> None:
     for array in group.arrays:
         assert array.layer is not None
         data = np.asarray(array.layer.data)
-        zarr_group.create_dataset(name=array.name, data=data)
+        zarr_group.create_dataset(name=Path(array.name).name, data=data)
     for child in group.children:
         g = zarr_group.create_group(name=child.name)
         _write_zarr_group(child, g)
