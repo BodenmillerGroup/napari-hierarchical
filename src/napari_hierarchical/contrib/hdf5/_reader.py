@@ -57,8 +57,8 @@ def _read_hdf5_array(
     hdf5_file: str, hdf5_names: Sequence[str], hdf5_dataset: "h5py.Dataset"
 ) -> HDF5Array:
     assert len(hdf5_names) > 0
-    name = hdf5_names[-1]
     hdf5_path = "/".join(hdf5_names)
+    name = f"{Path(hdf5_file).name}/{hdf5_path}"
     array = HDF5Array(name=name, hdf5_file=hdf5_file, hdf5_path=hdf5_path)
     array.flat_grouping_groups["Path"] = (
         "/*" * (len(hdf5_names) - 1) + "/" + hdf5_names[-1]
