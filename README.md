@@ -1,5 +1,8 @@
 # napari-hierarchical
 
+> **Warning**
+> This repository has been archived, please refer to [jwindhager/napari-hierarchical](https://github.com/jwindhager/napari-hierarchical).
+
 [![License MIT](https://img.shields.io/pypi/l/napari-hierarchical.svg?color=green)](https://github.com/BodenmillerGroup/napari-hierarchical/raw/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/napari-hierarchical.svg?color=green)](https://pypi.org/project/napari-hierarchical)
 [![Python Version](https://img.shields.io/pypi/pyversions/napari-hierarchical.svg?color=green)](https://python.org)
